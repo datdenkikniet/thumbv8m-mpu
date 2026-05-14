@@ -1,0 +1,168 @@
+#![cfg_attr(not(test), no_std)]
+
+pub(crate) mod regs;
+
+// #[cfg(not(test))]
+// mod arch;
+// #[cfg(not(test))]
+// pub use arch::*;
+
+#[cfg(test)]
+mod test;
+
+use bitbybit::bitenum;
+use core::ops::RangeInclusive;
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug)]
+#[bitenum(u2, exhaustive = false)]
+pub enum Shareability {
+    NonShareable = 0b00,
+    OuterShareable = 0b10,
+    InnerShareable = 0b11,
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug)]
+#[bitenum(u2, exhaustive = true)]
+pub enum AccessPermissions {
+    PrivilegedReadWrite = 0b00,
+    AnyReadWrite = 0b01,
+    PrivilegedReadOnly = 0b10,
+    AnyReadOnly = 0b11,
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone, Copy)]
+pub enum MemoryAttributes {
+    Device(DeviceMemoryAttributes),
+    Normal {
+        outer: NormalMemoryAttributes,
+        inner: NormalMemoryAttributes,
+    },
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone, Copy)]
+pub enum NormalMemoryAttributes {
+    WriteThroughTransient(TransientAllocations),
+    NonCacheable,
+    WriteBackTransient(TransientAllocations),
+    WriteThroughNonTransient {
+        allocate_reads: bool,
+        allocate_writes: bool,
+    },
+    WriteBackNonTransient {
+        allocate_reads: bool,
+        allocate_writes: bool,
+    },
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone, Copy)]
+pub enum TransientAllocations {
+    AllocateWrites,
+    AllocateReads,
+    /// Allocate both reads and writes.
+    AllocateBoth,
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug)]
+#[bitenum(u2, exhaustive = true)]
+pub enum DeviceMemoryAttributes {
+    /// The device memory has the Non Gathering, Non Reordering,
+    /// and Non Early Write Acknowledgement attributes.
+    None = 0b00,
+    /// The dvice memory has the NonGathering, Non Reordering,
+    /// and Early Write Acknowledgement Attributes.
+    NonGatheringNonReordering = 0b01,
+    /// The device memory has the Non Gathering, Reordering and
+    /// Early Write Acknowledgement attributes.
+    NonGathering = 0b10,
+    /// The device memory has the Gathering, Reordering, and
+    /// Early Write Acknowledgement attributes.
+    All = 0b11,
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone, Copy)]
+#[repr(align(32))]
+pub struct RegionAligned<T> {
+    inner: T,
+}
+
+impl<T> RegionAligned<T> {
+    pub const fn new(value: T) -> Self {
+        const {
+            assert!(
+                core::mem::size_of::<T>().is_multiple_of(RegionRange::REQUIRED_ALIGNMENT as _),
+                "The size of `value` is not a multiple of Region::REQUIRED_ALIGNMENT bytes"
+            )
+        }
+
+        Self { inner: value }
+    }
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone)]
+pub struct RegionRange {
+    /// The range of addresses in this region.
+    range: RangeInclusive<u32>,
+}
+
+impl RegionRange {
+    /// Addresses must be 32-byte aligned.
+    pub const REQUIRED_ALIGNMENT: u32 = 32;
+
+    /// A bitmask that can be used to determine if
+    /// an address is aligned, or to create an aligned address
+    /// from a potentially-unaligned address.
+    pub const ALIGNMENT_MASK: u32 = 0xFFFF_FFFF << (Self::REQUIRED_ALIGNMENT / 8);
+
+    /// NOTE: not `unsafe`, as invalid configurations
+    /// will raise a fault. However, don't use this function
+    /// with values not directly read from the MPU!.
+    fn new_unchecked(range: RangeInclusive<u32>) -> Self {
+        Self { range }
+    }
+
+    pub fn from_aligned<T>(aligned: &RegionAligned<T>) -> Self {
+        let start = aligned as *const _ as usize as u32;
+        let end = start + core::mem::size_of::<RegionAligned<T>>() as u32 - 1;
+        Self { range: start..=end }
+    }
+
+    /// Create a new region from the provided raw data.
+    ///
+    /// `address` is the start address of the region, and
+    /// `size` is the size of the region in bytes.
+    ///
+    /// This function returns an error if `address` is not a multiple
+    /// of 32, or if `size + 1` is not a multiple of 32.
+    pub const fn new_raw(address: u32, size: u32) -> Result<Self, ()> {
+        let range = address..=address + size;
+
+        if range.start().is_multiple_of(32) && *range.end() % 32 == 31 {
+            Ok(Self { range })
+        } else {
+            Err(())
+        }
+    }
+
+    pub fn get(&self) -> RangeInclusive<u32> {
+        self.range.clone()
+    }
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone)]
+pub struct Region {
+    /// The range of addresses in this region.
+    pub range: RegionRange,
+    pub attributes: MemoryAttributes,
+    pub shareability: Shareability,
+    pub access_permissions: AccessPermissions,
+    pub execute_never: bool,
+}
