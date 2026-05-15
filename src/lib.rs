@@ -11,6 +11,9 @@ pub use arch::*;
 #[cfg(test)]
 mod test;
 
+mod region_aligned;
+pub use region_aligned::RegionAligned;
+
 use bitbybit::bitenum;
 use core::ops::RangeInclusive;
 
@@ -41,6 +44,15 @@ pub enum MemoryAttributes {
         outer: NormalMemoryAttributes,
         inner: NormalMemoryAttributes,
     },
+}
+
+impl MemoryAttributes {
+    pub const fn non_cacheable() -> Self {
+        Self::Normal {
+            outer: NormalMemoryAttributes::NonCacheable,
+            inner: NormalMemoryAttributes::NonCacheable,
+        }
+    }
 }
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -87,30 +99,6 @@ pub enum DeviceMemoryAttributes {
 }
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone, Copy)]
-#[repr(C, align(32))]
-pub struct RegionAligned<T, const PADDING: usize> {
-    inner: T,
-    _padding: [u8; PADDING],
-}
-
-impl<T, const PADDING: usize> RegionAligned<T, PADDING> {
-    pub const fn new(value: T) -> Self {
-        const {
-            assert!(
-                core::mem::size_of::<Self>().is_multiple_of(RegionRange::REQUIRED_ALIGNMENT as _),
-                "Tried to construct a `RegionAligned` whose size not a multiple of Region::REQUIRED_ALIGNMENT bytes. Adjust its padding to fix the problem"
-            )
-        }
-
-        Self {
-            inner: value,
-            _padding: [0u8; _],
-        }
-    }
-}
-
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone)]
 pub struct RegionRange {
     /// The range of addresses in this region.
@@ -131,12 +119,6 @@ impl RegionRange {
     /// with values not directly read from the MPU!.
     fn new_unchecked(range: RangeInclusive<u32>) -> Self {
         Self { range }
-    }
-
-    pub fn from_aligned<T, const PADDING: usize>(aligned: &RegionAligned<T, PADDING>) -> Self {
-        let start = aligned as *const _ as usize as u32;
-        let end = start + core::mem::size_of::<RegionAligned<T, PADDING>>() as u32 - 1;
-        Self { range: start..=end }
     }
 
     /// Create a new region from the provided raw data.
@@ -162,7 +144,7 @@ impl RegionRange {
 }
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct AttributeIndex(u3);
 
 impl AttributeIndex {
@@ -194,10 +176,30 @@ impl Into<arbitrary_int::u3> for AttributeIndex {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone)]
 pub struct Region {
+    pub enabled: bool,
     /// The range of addresses in this region.
     pub range: RegionRange,
-    pub attribute_index: AttributeIndex,
+    pub attributes: AttributesOrIndex,
     pub shareability: Shareability,
     pub access_permissions: AccessPermissions,
     pub execute_never: bool,
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone)]
+pub enum AttributesOrIndex {
+    Attributes(MemoryAttributes),
+    Index(AttributeIndex),
+}
+
+impl From<MemoryAttributes> for AttributesOrIndex {
+    fn from(value: MemoryAttributes) -> Self {
+        Self::Attributes(value)
+    }
+}
+
+impl From<AttributeIndex> for AttributesOrIndex {
+    fn from(value: AttributeIndex) -> Self {
+        Self::Index(value)
+    }
 }

@@ -17,7 +17,7 @@ fn misaligned_invalid_len_region() {
 
 #[test]
 fn region_from_aligned_struct() {
-    let aligned = RegionAligned::new([0u8; 32]);
+    let aligned = RegionAligned::<_, 0>::new([0u8; 32]);
     let region = RegionRange::from_aligned(&aligned);
 
     assert!(
