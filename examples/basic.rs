@@ -23,7 +23,6 @@ fn main() -> ! {
         enabled: true,
         range: STATIC_DMA_MEMORY.as_range(),
         attributes: MemoryAttributes::non_cacheable().into(),
-        shareability: Shareability::NonShareable,
         access_permissions: AccessPermissions::AnyReadWrite,
         execute_never: false,
     };
@@ -32,7 +31,6 @@ fn main() -> ! {
         enabled: true,
         range: dynamic_dma_memory.as_range(),
         attributes: MemoryAttributes::non_cacheable().into(),
-        shareability: Shareability::NonShareable,
         access_permissions: AccessPermissions::AnyReadWrite,
         execute_never: false,
     };

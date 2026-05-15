@@ -4,7 +4,7 @@
 //! in a module.
 
 use crate::{
-    AttributeIndex, AttributesOrIndex, MemoryAttributes, Region, RegionRange,
+    AttributeIndex, MemoryAttributes, Region, RegionRange, Shareability,
     regs::{BaseAddress, LimitAddress, Type},
 };
 use arbitrary_int::*;
@@ -65,20 +65,25 @@ impl Mpu {
         let base = BaseAddress::new_with_raw_value(self.mpu.rbar.read());
         let start = u32::from(base.base()) << 5;
         let end = u32::from(limit.limit()) << 5;
+        let attributes =
+            self.get_attributes(limit.attr_index().into(), base.shareability().unwrap());
 
         Region {
             range: RegionRange::new_unchecked(start..=end),
-            attributes: AttributesOrIndex::Index(limit.attr_index().into()),
-            shareability: base.shareability().unwrap(),
+            attributes,
             access_permissions: base.access_permissions(),
             execute_never: base.execute_never(),
             enabled: limit.enable(),
         }
     }
 
-    pub fn get_attributes(&self, num: AttributeIndex) -> MemoryAttributes {
+    pub fn get_attributes(
+        &self,
+        num: AttributeIndex,
+        shareability: Shareability,
+    ) -> MemoryAttributes {
         let value = self.read_attribute_for(num);
-        MemoryAttributes::decode(value)
+        MemoryAttributes::decode(value, shareability)
     }
 
     pub fn set_attributes(&self, num: AttributeIndex, attributes: MemoryAttributes) {
@@ -105,20 +110,22 @@ impl Mpu {
             }
         }
 
-        let attribute_index = match region.attributes {
-            AttributesOrIndex::Attributes(memory_attributes) => {
-                let num = u3::new(num).into();
-                self.write_attribute_for(num, memory_attributes.encode());
-                num
-            }
-            AttributesOrIndex::Index(num) => num,
+        let attribute_index = u3::new(num).into();
+        self.write_attribute_for(attribute_index, region.attributes.encode());
+
+        // The shareability bits are ignored for
+        // any type of device memory, so we can
+        // set them to some default.
+        let shareability = match region.attributes {
+            MemoryAttributes::Device(_) => Shareability::OuterShareable,
+            MemoryAttributes::Normal { shareability, .. } => shareability,
         };
 
         // No overlapping ranges, so we can set up the region.
         let start = *region.range.get().start() >> 5;
         let base = BaseAddress::builder()
             .with_base(u27::new(start))
-            .with_shareability(region.shareability)
+            .with_shareability(shareability)
             .with_access_permissions(region.access_permissions)
             .with_execute_never(region.execute_never)
             .build();
@@ -133,6 +140,9 @@ impl Mpu {
 
         unsafe { self.mpu.rbar.write(base.raw_value()) };
         unsafe { self.mpu.rlar.write(limit.raw_value()) };
+
+        cortex_m::asm::dsb();
+        cortex_m::asm::isb();
 
         Ok(())
     }
@@ -157,6 +167,9 @@ impl Mpu {
         let privdefena = (privileged_sw_may_access_default_map as u32) << 2;
         let hfnmiena = (enable_mpu_in_nmi_and_hardfault as u32) << 1;
         unsafe { self.mpu.ctrl.write(privdefena | hfnmiena | 1) };
+
+        cortex_m::asm::dsb();
+        cortex_m::asm::isb();
     }
 
     /// Disable the MPU

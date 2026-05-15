@@ -60,13 +60,13 @@ impl MemoryAttributes {
     pub const fn encode(&self) -> u8 {
         let (upper, lower) = match self {
             MemoryAttributes::Device(attr) => (0b0000, attr.raw_value().value()),
-            MemoryAttributes::Normal { outer, inner } => (outer.encode(), inner.encode()),
+            MemoryAttributes::Normal { outer, inner, .. } => (outer.encode(), inner.encode()),
         };
 
         (upper << 4) | lower
     }
 
-    pub const fn decode(value: u8) -> Self {
+    pub const fn decode(value: u8, shareability: Shareability) -> Self {
         let (upper, lower) = ((value >> 4) & 0xF, value & 0xF);
 
         match (upper, lower) {
@@ -76,6 +76,7 @@ impl MemoryAttributes {
             (outer, inner) => Self::Normal {
                 outer: NormalMemoryAttributes::decode(outer),
                 inner: NormalMemoryAttributes::decode(inner),
+                shareability,
             },
         }
     }
