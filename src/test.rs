@@ -1,6 +1,4 @@
-use std::u32;
-
-use crate::{regs::BaseAddress, *};
+use crate::*;
 
 #[test]
 fn aligned_valid_len_region() {

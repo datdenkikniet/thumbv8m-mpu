@@ -2,10 +2,11 @@
 
 pub(crate) mod regs;
 
-// #[cfg(not(test))]
-// mod arch;
-// #[cfg(not(test))]
-// pub use arch::*;
+#[cfg(not(test))]
+mod arch;
+use arbitrary_int::u3;
+#[cfg(not(test))]
+pub use arch::*;
 
 #[cfg(test)]
 mod test;
@@ -87,21 +88,25 @@ pub enum DeviceMemoryAttributes {
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
-#[repr(align(32))]
-pub struct RegionAligned<T> {
+#[repr(C, align(32))]
+pub struct RegionAligned<T, const PADDING: usize> {
     inner: T,
+    _padding: [u8; PADDING],
 }
 
-impl<T> RegionAligned<T> {
+impl<T, const PADDING: usize> RegionAligned<T, PADDING> {
     pub const fn new(value: T) -> Self {
         const {
             assert!(
-                core::mem::size_of::<T>().is_multiple_of(RegionRange::REQUIRED_ALIGNMENT as _),
-                "The size of `value` is not a multiple of Region::REQUIRED_ALIGNMENT bytes"
+                core::mem::size_of::<Self>().is_multiple_of(RegionRange::REQUIRED_ALIGNMENT as _),
+                "Tried to construct a `RegionAligned` whose size not a multiple of Region::REQUIRED_ALIGNMENT bytes. Adjust its padding to fix the problem"
             )
         }
 
-        Self { inner: value }
+        Self {
+            inner: value,
+            _padding: [0u8; _],
+        }
     }
 }
 
@@ -128,9 +133,9 @@ impl RegionRange {
         Self { range }
     }
 
-    pub fn from_aligned<T>(aligned: &RegionAligned<T>) -> Self {
+    pub fn from_aligned<T, const PADDING: usize>(aligned: &RegionAligned<T, PADDING>) -> Self {
         let start = aligned as *const _ as usize as u32;
-        let end = start + core::mem::size_of::<RegionAligned<T>>() as u32 - 1;
+        let end = start + core::mem::size_of::<RegionAligned<T, PADDING>>() as u32 - 1;
         Self { range: start..=end }
     }
 
@@ -158,10 +163,40 @@ impl RegionRange {
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone)]
+pub struct AttributeIndex(u3);
+
+impl AttributeIndex {
+    pub const fn new(value: u8) -> Option<Self> {
+        if let Ok(v) = u3::try_new(value) {
+            Some(Self(v))
+        } else {
+            None
+        }
+    }
+
+    pub fn get(&self) -> u8 {
+        self.0.value()
+    }
+}
+
+impl From<arbitrary_int::u3> for AttributeIndex {
+    fn from(value: arbitrary_int::u3) -> Self {
+        Self(value)
+    }
+}
+
+impl Into<arbitrary_int::u3> for AttributeIndex {
+    fn into(self) -> arbitrary_int::u3 {
+        self.0
+    }
+}
+
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone)]
 pub struct Region {
     /// The range of addresses in this region.
     pub range: RegionRange,
-    pub attributes: MemoryAttributes,
+    pub attribute_index: AttributeIndex,
     pub shareability: Shareability,
     pub access_permissions: AccessPermissions,
     pub execute_never: bool,

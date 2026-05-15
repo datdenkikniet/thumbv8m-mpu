@@ -4,8 +4,8 @@
 //! in a module.
 
 use crate::{
-    MemoryAttributes, Region, RegionRange,
-    regs::{Attribute, BaseAddress, LimitAddress, Type},
+    AttributeIndex, MemoryAttributes, Region, RegionRange,
+    regs::{BaseAddress, LimitAddress, Type},
 };
 use arbitrary_int::*;
 use cortex_m::peripheral::{CPUID, MPU};
@@ -23,14 +23,16 @@ impl Mpu {
         Type::new_with_raw_value(self.mpu._type.read())
     }
 
-    fn read_attribute_for(&self, num: u8) -> u8 {
+    fn read_attribute_for(&self, num: AttributeIndex) -> u8 {
+        let num = num.get();
         let index = (num / 4) as usize;
         let shift = (num % 4) * 8;
         let reg = self.mpu.mair[index].read();
         (reg >> shift) as u8
     }
 
-    fn write_attribute_for(&self, num: u8, attr: u8) {
+    fn write_attribute_for(&self, num: AttributeIndex, attr: u8) {
+        let num = num.get();
         let index = (num / 4) as usize;
         let shift = (num % 4) * 8;
         let mask = 0xFF << shift;
@@ -63,16 +65,12 @@ impl Mpu {
 
         if limit.enable() {
             let base = BaseAddress::new_with_raw_value(self.mpu.rbar.read());
-            let attr = self.read_attribute_for(num);
-            let attr = Attribute::new_with_raw_value(attr);
-
-            let attributes = MemoryAttributes::decode(attr.raw_value());
             let start = u32::from(base.base()) << 5;
             let end = u32::from(limit.limit()) << 5;
 
             let region = Region {
                 range: RegionRange::new_unchecked(start..=end),
-                attributes,
+                attribute_index: limit.attr_index().into(),
                 shareability: base.shareability().unwrap(),
                 access_permissions: base.access_permissions(),
                 execute_never: base.execute_never(),
@@ -82,6 +80,16 @@ impl Mpu {
         } else {
             None
         }
+    }
+
+    pub fn get_attributes(&self, num: AttributeIndex) -> MemoryAttributes {
+        let value = self.read_attribute_for(num);
+        MemoryAttributes::decode(value)
+    }
+
+    pub fn set_attributes(&self, num: AttributeIndex, attributes: MemoryAttributes) {
+        let value = attributes.encode();
+        self.write_attribute_for(num, value);
     }
 
     pub fn set_region(&mut self, num: u8, region: Option<Region>) -> Result<(), ()> {
@@ -108,8 +116,6 @@ impl Mpu {
 
             // No overlapping ranges, so we can set up the region.
 
-            let attributes = Attribute::new_with_raw_value(region.attributes.encode());
-
             let start = *region.range.get().start() >> 5;
             let base = BaseAddress::builder()
                 .with_base(u27::new(start))
@@ -127,7 +133,6 @@ impl Mpu {
                 .build();
 
             unsafe { self.mpu.rbar.write(base.raw_value()) };
-            self.write_attribute_for(num, attributes.raw_value());
             unsafe { self.mpu.rlar.write(limit.raw_value()) };
         } else {
             let limit = LimitAddress::builder()
