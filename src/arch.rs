@@ -4,7 +4,7 @@
 //! in a module.
 
 use crate::{
-    AttributeIndex, MemoryAttributes, Region, RegionRange, Shareability,
+    AttributeIndex, MemoryAttributes, Region, RegionRange,
     regs::{BaseAddress, LimitAddress, Type},
 };
 use arbitrary_int::*;
@@ -86,25 +86,20 @@ impl Mpu {
         let base = BaseAddress::new_with_raw_value(self.mpu.rbar.read());
         let start = u32::from(base.base()) << 5;
         let end = u32::from(limit.limit()) << 5;
-        let attributes =
-            self.get_attributes(limit.attr_index().into(), base.shareability().unwrap());
 
         Region {
             range: RegionRange::new_unchecked(start..=end),
-            attributes,
+            attribute_index: limit.attr_index().into(),
+            shareability: base.shareability().unwrap(),
             access_permissions: base.access_permissions(),
             execute_never: base.execute_never(),
             enabled: limit.enable(),
         }
     }
 
-    pub fn get_attributes(
-        &self,
-        num: AttributeIndex,
-        shareability: Shareability,
-    ) -> MemoryAttributes {
+    pub fn get_attributes(&self, num: AttributeIndex) -> MemoryAttributes {
         let value = self.read_attribute_for(num);
-        MemoryAttributes::decode(value, shareability)
+        MemoryAttributes::decode(value)
     }
 
     pub fn set_attributes(&self, num: AttributeIndex, attributes: MemoryAttributes) {
@@ -132,21 +127,12 @@ impl Mpu {
         }
 
         let attribute_index = u3::new(num).into();
-        self.write_attribute_for(attribute_index, region.attributes.encode());
-
-        // The shareability bits are ignored for
-        // any type of device memory, so we can
-        // set them to some default.
-        let shareability = match region.attributes {
-            MemoryAttributes::Device(_) => Shareability::OuterShareable,
-            MemoryAttributes::Normal { shareability, .. } => shareability,
-        };
 
         // No overlapping ranges, so we can set up the region.
         let start = *region.range.get().start() >> 5;
         let base = BaseAddress::builder()
             .with_base(u27::new(start))
-            .with_shareability(shareability)
+            .with_shareability(region.shareability)
             .with_access_permissions(region.access_permissions)
             .with_execute_never(region.execute_never)
             .build();
@@ -154,7 +140,7 @@ impl Mpu {
         let end = *region.range.get().end() >> 5;
         let limit = LimitAddress::builder()
             .with_enable(region.enabled)
-            .with_attr_index(attribute_index.into())
+            .with_attr_index(attribute_index)
             .with_limit(u27::new(end))
             .with_reserved(false)
             .build();

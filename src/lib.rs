@@ -41,7 +41,6 @@ pub enum AccessPermissions {
 pub enum MemoryAttributes {
     Device(DeviceMemoryAttributes),
     Normal {
-        shareability: Shareability,
         outer: NormalMemoryAttributes,
         inner: NormalMemoryAttributes,
     },
@@ -50,7 +49,6 @@ pub enum MemoryAttributes {
 impl MemoryAttributes {
     pub const fn non_cacheable() -> Self {
         Self::Normal {
-            shareability: Shareability::OuterShareable,
             outer: NormalMemoryAttributes::NonCacheable,
             inner: NormalMemoryAttributes::NonCacheable,
         }
@@ -181,7 +179,11 @@ pub struct Region {
     pub enabled: bool,
     /// The range of addresses in this region.
     pub range: RegionRange,
-    pub attributes: MemoryAttributes,
+    /// This value is ignored for address ranges
+    /// that have any of the [`MemoryAttributes::Device`]
+    /// attributes.
+    pub shareability: Shareability,
+    pub attribute_index: AttributeIndex,
     pub access_permissions: AccessPermissions,
     pub execute_never: bool,
 }

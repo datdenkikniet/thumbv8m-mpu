@@ -66,7 +66,7 @@ impl MemoryAttributes {
         (upper << 4) | lower
     }
 
-    pub const fn decode(value: u8, shareability: Shareability) -> Self {
+    pub const fn decode(value: u8) -> Self {
         let (upper, lower) = ((value >> 4) & 0xF, value & 0xF);
 
         match (upper, lower) {
@@ -76,7 +76,6 @@ impl MemoryAttributes {
             (outer, inner) => Self::Normal {
                 outer: NormalMemoryAttributes::decode(outer),
                 inner: NormalMemoryAttributes::decode(inner),
-                shareability,
             },
         }
     }
