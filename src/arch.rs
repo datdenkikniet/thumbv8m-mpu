@@ -10,9 +10,7 @@ use crate::{
 use arbitrary_int::*;
 use cortex_m::peripheral::{CPUID, MPU};
 
-/// The amount of regions that this implementation
-/// supports.
-pub const REGIONS: u8 = 8;
+pub struct RegionToken(u8);
 
 pub struct Mpu {
     mpu: MPU,
@@ -58,9 +56,32 @@ impl Mpu {
         Ok(me)
     }
 
-    pub fn get_region(&self, num: u8) -> Region {
-        assert!(num < REGIONS);
+    pub fn tokens<const NUM_REGIONS: usize>(&mut self) -> [RegionToken; NUM_REGIONS] {
+        const { assert!(NUM_REGIONS == 8 || NUM_REGIONS == 16) };
 
+        let regions = self.regions();
+        defmt::assert!(
+            NUM_REGIONS as u8 == regions,
+            "MPU had {} regions, but we're trying to hand out {} tokens",
+            regions,
+            NUM_REGIONS,
+        );
+
+        let mut tokens = [const { RegionToken(0) }; _];
+
+        let mut index = 0;
+        while index < NUM_REGIONS {
+            tokens[index] = RegionToken(index as u8);
+            index += 1;
+        }
+
+        tokens
+    }
+
+    pub fn get_region(&self, token: &RegionToken) -> Region {
+        // SAFETY: the side-effect of writing a different set
+        // of region registers is accounted for.
+        unsafe { self.mpu.rnr.write(token.0 as _) };
         let limit = LimitAddress::new_with_raw_value(self.mpu.rlar.read());
         let base = BaseAddress::new_with_raw_value(self.mpu.rbar.read());
         let start = u32::from(base.base()) << 5;
@@ -91,16 +112,16 @@ impl Mpu {
         self.write_attribute_for(num, value);
     }
 
-    pub fn set_region(&mut self, num: u8, region: Region) -> Result<(), ()> {
-        assert!(num < REGIONS);
+    pub fn set_region(&mut self, num: &mut RegionToken, region: Region) -> Result<(), ()> {
+        let num = num.0;
 
         unsafe { self.mpu.rnr.write(num as _) };
 
         // Check that the requested range does not overlap with
         // any other regions.
-        for other_region in (0..self.regions())
-            .filter_map(|other_region| (other_region != num).then(|| self.get_region(other_region)))
-        {
+        for other_region in (0..self.regions()).filter_map(|other_region| {
+            (other_region != num).then(|| self.get_region(&RegionToken(other_region)))
+        }) {
             let region = region.range.get();
             let other_region = other_region.range.get();
 
