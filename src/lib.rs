@@ -1,10 +1,13 @@
+//! High-level support for the Memory Protection Unit
+//! on ARM thumbv8-m based microcontrollers.
+#![warn(missing_docs)]
 #![cfg_attr(not(test), no_std)]
 
 pub(crate) mod regs;
 
 #[cfg(not(test))]
 mod arch;
-use arbitrary_int::u3;
+use arbitrary_int::{traits::Integer, u3};
 #[cfg(not(test))]
 pub use arch::*;
 
@@ -43,22 +46,37 @@ pub enum Shareability {
     OuterShareable = 0b10,
 }
 
+/// Access permissions for a region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug)]
 #[bitenum(u2, exhaustive = true)]
 pub enum AccessPermissions {
+    /// Only privileged code may perform read and
+    /// write accesses to the region.
     PrivilegedReadWrite = 0b00,
+    /// Any code may perform read and write accesses
+    /// to the region.
     AnyReadWrite = 0b01,
+    /// Only privileged code may perform read accesses
+    /// to the region.
     PrivilegedReadOnly = 0b10,
+    /// Any code may perform read accesses to the region.
     AnyReadOnly = 0b11,
 }
 
+/// The memory attributes of a region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub enum MemoryAttributes {
+    /// The memory in this region is a device memory.
     Device(DeviceMemoryAttributes),
+    /// The memory in this region is a normal memory.
     Normal {
+        /// The attributes of the outer (inter-bus-master
+        /// caching) memory.
         outer: NormalMemoryAttributes,
+        /// The attributes of the outer (single-core
+        /// caching) memory.
         inner: NormalMemoryAttributes,
     },
 }
@@ -71,6 +89,7 @@ impl MemoryAttributes {
     }
 }
 
+/// Attributes for a normal region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub enum NormalMemoryAttributes {
@@ -90,12 +109,15 @@ pub enum NormalMemoryAttributes {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub enum TransientAllocations {
+    /// Allocate writes.
     AllocateWrites,
+    /// Allocate reads.
     AllocateReads,
     /// Allocate both reads and writes.
     AllocateBoth,
 }
 
+/// Memory attributes for regions of device memory.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug)]
 #[bitenum(u2, exhaustive = true)]
@@ -114,6 +136,11 @@ pub enum DeviceMemoryAttributes {
     All = 0b11,
 }
 
+/// The range of a region.
+///
+/// This is, under the hood, a `RangeInclusive<u32>`
+/// for which `start % 32 == 0` and `end % 32 == 31`
+/// hold.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone)]
 pub struct RegionRange {
@@ -122,7 +149,7 @@ pub struct RegionRange {
 }
 
 impl RegionRange {
-    /// Addresses must be 32-byte aligned.
+    /// The required alignment for an address.
     pub const REQUIRED_ALIGNMENT: u32 = 32;
 
     /// A bitmask that can be used to determine if
@@ -154,16 +181,20 @@ impl RegionRange {
         }
     }
 
+    /// Get the raw range underpinning this region range.
     pub fn get(&self) -> RangeInclusive<u32> {
         self.range.clone()
     }
 }
 
+/// The index of a specific [`MemoryAttributes`] configuration.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub struct AttributeIndex(u3);
 
 impl AttributeIndex {
+    /// Create a new [`AttributeIndex`] from the provided
+    /// `u8`. This will return `None` if `value > 7`.
     pub const fn new(value: u8) -> Option<Self> {
         if let Ok(v) = u3::try_new(value) {
             Some(Self(v))
@@ -172,6 +203,7 @@ impl AttributeIndex {
         }
     }
 
+    /// Get the value of this [`AttributeIndex`].
     pub fn get(&self) -> u8 {
         self.0.value()
     }
@@ -189,9 +221,11 @@ impl Into<arbitrary_int::u3> for AttributeIndex {
     }
 }
 
+/// An MPU-configurable region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone)]
 pub struct Region {
+    /// Whether this region is enabled.
     pub enabled: bool,
     /// The range of addresses in this region.
     pub range: RegionRange,
@@ -200,7 +234,25 @@ pub struct Region {
     /// attributes. Regions that have [`MemoryAttributes::Device`]
     /// are always considered to be fully shared.
     pub shareability: Shareability,
+    /// The index of the [`MemoryAttributes`] that should be
+    /// assigned to this region.
     pub attribute_index: AttributeIndex,
+    /// The access permissions for this region.
     pub access_permissions: AccessPermissions,
+    /// Whether it should be possible to execute memory from
+    /// this region, provided that is readable.
     pub execute_never: bool,
+}
+
+impl Default for Region {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            range: RegionRange::new_unchecked(0..=0),
+            shareability: Shareability::OuterShareable,
+            attribute_index: AttributeIndex(u3::ZERO),
+            access_permissions: AccessPermissions::PrivilegedReadOnly,
+            execute_never: true,
+        }
+    }
 }

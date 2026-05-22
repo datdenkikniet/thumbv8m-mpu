@@ -57,7 +57,7 @@ pub struct Attribute {
 }
 
 impl MemoryAttributes {
-    pub const fn encode(&self) -> u8 {
+    pub(crate) const fn encode(&self) -> u8 {
         let (upper, lower) = match self {
             MemoryAttributes::Device(attr) => (0b0000, attr.raw_value().value()),
             MemoryAttributes::Normal { outer, inner, .. } => (outer.encode(), inner.encode()),
@@ -66,7 +66,7 @@ impl MemoryAttributes {
         (upper << 4) | lower
     }
 
-    pub const fn decode(value: u8) -> Self {
+    pub(crate) const fn decode(value: u8) -> Self {
         let (upper, lower) = ((value >> 4) & 0xF, value & 0xF);
 
         match (upper, lower) {
@@ -82,7 +82,7 @@ impl MemoryAttributes {
 }
 
 impl NormalMemoryAttributes {
-    pub const fn encode(&self) -> u8 {
+    pub(crate) const fn encode(&self) -> u8 {
         let (lower, upper) = match *self {
             NormalMemoryAttributes::WriteThroughTransient(transient) => (0b00, transient.encode()),
             NormalMemoryAttributes::NonCacheable => (0b01, 0b00),
@@ -100,7 +100,7 @@ impl NormalMemoryAttributes {
         (lower << 2) | upper
     }
 
-    pub const fn decode(value: u8) -> Self {
+    pub(crate) const fn decode(value: u8) -> Self {
         let (upper, lower) = ((value >> 2) & 0b11, value & 0b11);
 
         match (upper, lower) {
@@ -125,7 +125,7 @@ impl NormalMemoryAttributes {
 }
 
 impl TransientAllocations {
-    pub const fn encode(&self) -> u8 {
+    pub(crate) const fn encode(&self) -> u8 {
         match self {
             TransientAllocations::AllocateWrites => 0b01,
             TransientAllocations::AllocateReads => 0b10,
@@ -133,7 +133,7 @@ impl TransientAllocations {
         }
     }
 
-    pub const fn decode(value: u8) -> Self {
+    pub(crate) const fn decode(value: u8) -> Self {
         match value {
             0b01 => TransientAllocations::AllocateWrites,
             0b10 => TransientAllocations::AllocateReads,
