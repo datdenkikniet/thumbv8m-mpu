@@ -18,7 +18,7 @@ fn main() -> ! {
 
     let dynamic_dma_memory: RegionAligned<[u8; 1022], 2> = RegionAligned::new([0u8; _]);
     let peripherals = cortex_m::Peripherals::take().unwrap();
-    let mut mpu = Mpu::new(&peripherals.CPUID, peripherals.MPU).unwrap();
+    let mut mpu = Mpu::new(peripherals.MPU);
     let mut tokens: [_; 8] = mpu.tokens();
 
     let non_cacheable_index: AttributeIndex = u3::try_new(0).unwrap().into();

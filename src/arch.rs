@@ -8,10 +8,13 @@ use crate::{
     regs::{BaseAddress, LimitAddress, Type},
 };
 use arbitrary_int::*;
-use cortex_m::peripheral::{CPUID, MPU};
+use cortex_m::peripheral::MPU;
 
+/// A token providing access to configure a specific
+/// region.
 pub struct RegionToken(u8);
 
+/// The thumbv8m MPU.
 pub struct Mpu {
     mpu: MPU,
 }
@@ -38,24 +41,15 @@ impl Mpu {
         unsafe { self.mpu.mair[index].modify(|w| w & !mask | ((attr as u32) << shift)) };
     }
 
-    pub fn new(cpuid: &CPUID, mpu: MPU) -> Result<Self, ()> {
-        let base = cpuid.base.read();
-        let part_no = (base >> 4) & 0xFFF;
-
-        // 0xD21 = Cortex-M33
-        if part_no != 0xD21 {
-            return Err(());
-        }
-
-        let me = Self { mpu };
-
-        if me.regions() != 8 {
-            return Err(());
-        }
-
-        Ok(me)
+    /// Instantiate the MPU.
+    pub const fn new(mpu: MPU) -> Self {
+        Self { mpu }
     }
 
+    /// Get an array of all available region tokens.
+    ///
+    /// This asserts that `NUM_REGIONS` is 8 or 16, and that it is equal
+    /// to the amount of requested regions at runtime, which may panic.
     pub fn tokens<const NUM_REGIONS: usize>(&mut self) -> [RegionToken; NUM_REGIONS] {
         const { assert!(NUM_REGIONS == 8 || NUM_REGIONS == 16) };
 
@@ -78,6 +72,7 @@ impl Mpu {
         tokens
     }
 
+    /// Get the configuration of the region found at `token`.
     pub fn get_region(&self, token: &RegionToken) -> Region {
         // SAFETY: the side-effect of writing a different set
         // of region registers is accounted for.
@@ -97,18 +92,24 @@ impl Mpu {
         }
     }
 
-    pub fn get_attributes(&self, num: AttributeIndex) -> MemoryAttributes {
-        let value = self.read_attribute_for(num);
+    /// Get the attributes specified at `index`.
+    pub fn get_attributes(&self, index: AttributeIndex) -> MemoryAttributes {
+        let value = self.read_attribute_for(index);
         MemoryAttributes::decode(value)
     }
 
-    pub fn set_attributes(&self, num: AttributeIndex, attributes: MemoryAttributes) {
+    /// Set the attributes at `index` to `attributes`.
+    ///
+    /// This affect all regions whose `index` is set to `index`.
+    pub fn set_attributes(&self, index: AttributeIndex, attributes: MemoryAttributes) {
         let value = attributes.encode();
-        self.write_attribute_for(num, value);
+        self.write_attribute_for(index, value);
     }
 
-    pub fn set_region(&mut self, num: &mut RegionToken, region: Region) -> Result<(), ()> {
-        let num = num.0;
+    /// Set the region at `token` to the configuration specified
+    /// by `region`.
+    pub fn set_region(&mut self, token: &mut RegionToken, region: Region) -> Result<(), ()> {
+        let num = token.0;
 
         unsafe { self.mpu.rnr.write(num as _) };
 
