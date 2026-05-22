@@ -17,13 +17,30 @@ pub use region_aligned::RegionAligned;
 use bitbybit::bitenum;
 use core::ops::RangeInclusive;
 
+/// The shareability of a memory region.
+///
+/// This enum does not have a fully-shared variant:
+/// to configure a region to be fully shared, configure
+/// its [`MemoryAttributes`] to one of the
+/// [`MemoryAttributes::Device`] variants.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug)]
 #[bitenum(u2, exhaustive = false)]
 pub enum Shareability {
+    /// Non-shareable regions are only accessed by
+    /// the core itself, and do not require any sort
+    /// of bus-master synchronization.
     NonShareable = 0b00,
-    OuterShareable = 0b10,
+    /// Inner shareable regions are accessed by the
+    /// core itself, and other bus-masters
+    /// that are part of the same inner domain.
     InnerShareable = 0b11,
+    /// Outer shareable regions are accessed by the
+    /// core itself, other bus-masters that are
+    /// part of the same inner domain, and other
+    /// bus-masters that are part of other inner
+    /// domains.
+    OuterShareable = 0b10,
 }
 
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -181,7 +198,8 @@ pub struct Region {
     pub range: RegionRange,
     /// This value is ignored for address ranges
     /// that have any of the [`MemoryAttributes::Device`]
-    /// attributes.
+    /// attributes. Regions that have [`MemoryAttributes::Device`]
+    /// are always considered to be fully shared.
     pub shareability: Shareability,
     pub attribute_index: AttributeIndex,
     pub access_permissions: AccessPermissions,
