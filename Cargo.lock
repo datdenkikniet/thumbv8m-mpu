@@ -12,17 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "armv8m-mpu"
-version = "0.1.0"
-dependencies = [
- "arbitrary-int",
- "bitbybit",
- "cortex-m",
- "cortex-m-rt",
- "defmt",
-]
-
-[[package]]
 name = "bare-metal"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -236,6 +225,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thumbv8m-mpu"
+version = "0.1.0"
+dependencies = [
+ "arbitrary-int",
+ "bitbybit",
+ "cortex-m",
+ "cortex-m-rt",
+ "defmt",
 ]
 
 [[package]]
