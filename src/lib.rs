@@ -64,11 +64,10 @@ pub enum MemoryAttributes {
 }
 
 impl MemoryAttributes {
+    /// Memory attributes describing fully non-cacheable memory,
+    /// i.e. memory that is shared with a DMA peripheral.
     pub const fn non_cacheable() -> Self {
-        Self::Normal {
-            outer: NormalMemoryAttributes::NonCacheable,
-            inner: NormalMemoryAttributes::NonCacheable,
-        }
+        Self::Device(DeviceMemoryAttributes::None)
     }
 }
 
