@@ -1,6 +1,6 @@
 //! High-level support for the Memory Protection Unit
 //! on ARM thumbv8-m based microcontrollers.
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 #![cfg_attr(not(test), no_std)]
 
 pub(crate) mod regs;
@@ -90,30 +90,53 @@ impl MemoryAttributes {
 }
 
 /// Attributes for a normal region.
+///
+/// # Allocating
+/// Allocating means that a certain operation (read or write)
+/// to the region will cause a cache-line to be allocated
+/// for the addresses that this operation is performed on.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub enum NormalMemoryAttributes {
+    /// Transient (i.e. little-used) write-through
+    /// memory.
     WriteThroughTransient(TransientAllocations),
+    /// Non-cacheable normal memory.
     NonCacheable,
+    /// Transient (i.e. little-used) write-back
+    /// memory.
     WriteBackTransient(TransientAllocations),
+    /// Non-transient (i.e. often-used) write-through
+    /// memory.
     WriteThroughNonTransient {
+        /// Whether reads allocate cache lines.
         allocate_reads: bool,
+        /// Whether writes allocate cache lines.
         allocate_writes: bool,
     },
+    /// Non-transient (i.e. often-used) write-back
+    /// memory.
     WriteBackNonTransient {
+        /// Whether reads allocate cache lines.
         allocate_reads: bool,
+        /// Whether writes allocate cache lines.
         allocate_writes: bool,
     },
 }
 
+/// Cache allocation behaviour for transient memory
+/// attributes.
+///
+/// For more information on what allocations mean, see
+/// [NormalMemoryAttributes](./enum.NormalMemoryAttributes.html#allocating).
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub enum TransientAllocations {
-    /// Allocate writes.
+    /// Writes allocate cache lines.
     AllocateWrites,
-    /// Allocate reads.
+    /// Reads allocate cache lines.
     AllocateReads,
-    /// Allocate both reads and writes.
+    /// Both reads and writes allocate cache lines.
     AllocateBoth,
 }
 
