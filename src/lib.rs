@@ -220,6 +220,11 @@ impl RegionRange {
 }
 
 /// The index of a specific [`MemoryAttributes`] configuration.
+///
+/// This index refers to an offset in one of the Memory Attribute Indirection
+/// registers in the MPU. This offset is then used to configure the Memory
+/// Attributes for all enabled memory regions whose `index` field is set to
+/// the corresponding [`AttributeIndex`].
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
 pub struct AttributeIndex(u3);
