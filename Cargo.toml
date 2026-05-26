@@ -2,6 +2,15 @@
 name = "thumbv8m-mpu"
 version = "0.1.0"
 edition = "2024"
+readme = "README.md"
+authors = [ "Johannes Cornelis Draaijer <jcdra1@gmail.com>" ]
+license = "MIT"
+description = "thumbv8-m MPU access"
+documentation = "https://docs.rs/thumbv8m-mpu"
+repository = "https://github.com/datdenkikniet/thumbv8m-mpu"
+
+[package.metadata.docs.rs]
+default-target = "thumbv8m.main-none-eabihf"
 
 [dependencies]
 arbitrary-int = "2.1.1"
