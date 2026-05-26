@@ -189,7 +189,7 @@ impl RegionRange {
     /// Create a new region from the provided address range.
     ///
     /// This function returns an error if `range.start` is not a multiple
-    /// of 32, or if `range.end` is not a multiple of 32.
+    /// of 32, or if `range.end` is not a multiple of 32, or if `range.end < range.start`.
     pub const fn new(range: Range<u32>) -> Result<Self, ()> {
         Self::new_inclusive(range.start..=range.end.saturating_sub(1))
     }
@@ -197,14 +197,16 @@ impl RegionRange {
     /// Create a new region from the provided address range.
     ///
     /// This function returns an error if `range.start()` is not a multiple
-    /// of 32, or if `range.end().wrapping_add(1)` is not a multiple of 32.
+    /// of 32, or if `range.end().wrapping_add(1)` is not a multiple of 32,
+    /// or if `range.end() < range.start()`.
     pub const fn new_inclusive(range: RangeInclusive<u32>) -> Result<Self, ()> {
         // If `range.end != u32::MAX`, this will not overflow.
         // If `range.end == u32::MAX` (a correct ending), this will wrap to `0`,
         // which is a multiple of 32.
         let range_end_aligned = range.end().wrapping_add(1).is_multiple_of(32);
 
-        if !range.start().is_multiple_of(32) || !range_end_aligned {
+        if !range.start().is_multiple_of(32) || !range_end_aligned || *range.end() < *range.start()
+        {
             return Err(());
         }
 
