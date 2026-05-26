@@ -12,32 +12,50 @@ fn aligned_valid_len_region_exclusive() {
 
 #[test]
 fn aligned_invalid_len_region() {
-    assert!(RegionRange::new_inclusive(0..=32).is_err());
+    assert_eq!(
+        RegionRange::new_inclusive(0..=32),
+        Err(RegionRangeError::EndMisaligned)
+    );
 }
 
 #[test]
 fn aligned_invalid_len_region_exclusive() {
-    assert!(RegionRange::new(0..33).is_err());
+    assert_eq!(
+        RegionRange::new(0..33),
+        Err(RegionRangeError::EndMisaligned)
+    );
 }
 
 #[test]
 fn misaligned_invalid_len_region() {
-    assert!(RegionRange::new_inclusive(1..=32).is_err());
+    assert_eq!(
+        RegionRange::new_inclusive(1..=32),
+        Err(RegionRangeError::StartMisaligned)
+    );
 }
 
 #[test]
 fn misaligned_invalid_len_exclusive() {
-    assert!(RegionRange::new(1..33).is_err());
+    assert_eq!(
+        RegionRange::new(1..33),
+        Err(RegionRangeError::StartMisaligned)
+    );
 }
 
 #[test]
 fn start_greater_than_end() {
-    assert!(RegionRange::new_inclusive(31..=0).is_err());
+    assert_eq!(
+        RegionRange::new_inclusive(32..=31),
+        Err(RegionRangeError::EndBeforeStart)
+    );
 }
 
 #[test]
 fn start_greater_than_end_exclusive() {
-    assert!(RegionRange::new(32..0).is_err());
+    assert_eq!(
+        RegionRange::new(32..32),
+        Err(RegionRangeError::EndBeforeStart)
+    );
 }
 
 #[test]

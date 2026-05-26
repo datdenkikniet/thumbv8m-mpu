@@ -1,5 +1,5 @@
-use core::ops::{Deref, DerefMut};
 use core::num::NonZeroU32;
+use core::ops::{Deref, DerefMut};
 
 use crate::RegionRange;
 
@@ -59,15 +59,15 @@ impl<T: Default, const PADDING: usize> Default for RegionAligned<T, PADDING> {
     }
 }
 
-impl<T, const PADDING: usize> Into<RegionRange> for &RegionAligned<T, PADDING> {
-    fn into(self) -> RegionRange {
-        self.as_range()
+impl<T, const PADDING: usize> From<&RegionAligned<T, PADDING>> for RegionRange {
+    fn from(val: &RegionAligned<T, PADDING>) -> Self {
+        val.as_range()
     }
 }
 
-impl<T, const PADDING: usize> Into<RegionRange> for &mut RegionAligned<T, PADDING> {
-    fn into(self) -> RegionRange {
-        self.as_range()
+impl<T, const PADDING: usize> From<&mut RegionAligned<T, PADDING>> for RegionRange {
+    fn from(val: &mut RegionAligned<T, PADDING>) -> Self {
+        val.as_range()
     }
 }
 

@@ -14,6 +14,23 @@ use cortex_m::peripheral::MPU;
 /// region.
 pub struct RegionToken(u8);
 
+impl RegionToken {
+    /// Get the raw index of this token.
+    pub fn get(&self) -> u8 {
+        self.0
+    }
+}
+
+/// The provided region range overlaps with another
+/// enabled region.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OverlappingRanges {
+    /// The number of the region with which the provided range
+    /// overlaps.
+    pub region: u8,
+}
+
 /// The thumbv8m MPU.
 pub struct Mpu {
     mpu: MPU,
@@ -121,26 +138,36 @@ impl Mpu {
 
     /// Set the region at `token` to the configuration specified
     /// by `region`.
-    pub fn set_region(&mut self, token: &mut RegionToken, region: Region) -> Result<(), ()> {
+    pub fn set_region(
+        &mut self,
+        token: &mut RegionToken,
+        region: Region,
+    ) -> Result<(), OverlappingRanges> {
         let num = token.0;
 
         unsafe { self.mpu.rnr.write(num as _) };
 
         // Check that the requested range does not overlap with
         // any other regions.
-        for other_region in (0..self.regions()).filter_map(|other_region| {
-            (other_region != num).then(|| self.get_region(&RegionToken(other_region)))
-        }) {
+        for other_region_num in 0..self.regions() {
+            let other_region = if other_region_num != num {
+                self.get_region(&RegionToken(other_region_num))
+            } else {
+                continue;
+            };
+
             let region = region.range.get();
             let other_region = other_region.range.get();
 
             // Manual implementation of currently-unstable `RangeInclusive::is_overlapping`
             if (region.start() <= other_region.end()) & (other_region.start() <= region.end()) {
-                return Err(());
+                return Err(OverlappingRanges {
+                    region: other_region_num,
+                });
             }
         }
 
-        let attribute_index = u3::new(num).into();
+        let attribute_index = u3::new(num);
 
         // No overlapping ranges, so we can set up the region.
         let start = *region.range.get().start() >> 5;

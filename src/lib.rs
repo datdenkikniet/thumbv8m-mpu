@@ -159,13 +159,27 @@ pub enum DeviceMemoryAttributes {
     All = 0b11,
 }
 
+/// The reason that a range was not a valid region range.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum RegionRangeError {
+    /// The start address of the range does not have
+    /// an alignment of [`RegionRange::REQUIRED_ALIGNMENT`].
+    StartMisaligned,
+    /// The end address of the range does not have the
+    /// correct alignment.
+    EndMisaligned,
+    /// The end of the range is before the start of the range.
+    EndBeforeStart,
+}
+
 /// The range of a region.
 ///
 /// This is, under the hood, a `RangeInclusive<u32>`
 /// for which `start % 32 == 0` and `end % 32 == 31`
 /// hold.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RegionRange {
     /// The range of addresses in this region.
     range: RangeInclusive<u32>,
@@ -190,7 +204,7 @@ impl RegionRange {
     ///
     /// This function returns an error if `range.start` is not a multiple
     /// of 32, or if `range.end` is not a multiple of 32, or if `range.end < range.start`.
-    pub const fn new(range: Range<u32>) -> Result<Self, ()> {
+    pub const fn new(range: Range<u32>) -> Result<Self, RegionRangeError> {
         Self::new_inclusive(range.start..=range.end.saturating_sub(1))
     }
 
@@ -199,15 +213,18 @@ impl RegionRange {
     /// This function returns an error if `range.start()` is not a multiple
     /// of 32, or if `range.end().wrapping_add(1)` is not a multiple of 32,
     /// or if `range.end() < range.start()`.
-    pub const fn new_inclusive(range: RangeInclusive<u32>) -> Result<Self, ()> {
+    pub const fn new_inclusive(range: RangeInclusive<u32>) -> Result<Self, RegionRangeError> {
         // If `range.end != u32::MAX`, this will not overflow.
         // If `range.end == u32::MAX` (a correct ending), this will wrap to `0`,
         // which is a multiple of 32.
         let range_end_aligned = range.end().wrapping_add(1).is_multiple_of(32);
 
-        if !range.start().is_multiple_of(32) || !range_end_aligned || *range.end() < *range.start()
-        {
-            return Err(());
+        if !range.start().is_multiple_of(Self::REQUIRED_ALIGNMENT) {
+            return Err(RegionRangeError::StartMisaligned);
+        } else if !range_end_aligned {
+            return Err(RegionRangeError::EndMisaligned);
+        } else if *range.end() < *range.start() {
+            return Err(RegionRangeError::EndBeforeStart);
         }
 
         Ok(Self { range })
@@ -252,9 +269,9 @@ impl From<arbitrary_int::u3> for AttributeIndex {
     }
 }
 
-impl Into<arbitrary_int::u3> for AttributeIndex {
-    fn into(self) -> arbitrary_int::u3 {
-        self.0
+impl From<AttributeIndex> for arbitrary_int::u3 {
+    fn from(value: AttributeIndex) -> Self {
+        value.0
     }
 }
 
