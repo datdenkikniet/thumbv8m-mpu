@@ -17,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Add default build target
+        run: rustup target add thumbv8m.main-none-eabihf
       - name: Build basic example
         run: cargo build --release --example basic --target thumbv8m.main-none-eabihf
 
@@ -24,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Add default build target
+        run: rustup target add thumbv8m.main-none-eabihf
       - name: Run clippy
         run: cargo clippy -- -Dwarnings
 
