@@ -17,6 +17,7 @@ pub struct RegionToken(u8);
 /// The thumbv8m MPU.
 pub struct Mpu {
     mpu: MPU,
+    took_tokens: bool,
 }
 
 impl Mpu {
@@ -43,19 +44,27 @@ impl Mpu {
 
     /// Instantiate the MPU.
     pub const fn new(mpu: MPU) -> Self {
-        Self { mpu }
+        Self {
+            mpu,
+            took_tokens: false,
+        }
     }
 
     /// Get an array of all available region tokens.
     ///
-    /// This asserts that `NUM_REGIONS` is 8 or 16, and that it is equal
-    /// to the amount of requested regions at runtime, which may panic.
+    /// # Panics
+    /// This function panics if `NUM_REGIONS` is not 8 or 16, or if
+    /// `NUM_REGIONS` is greater than the amount of regions supported
+    /// by the device's MPU, or if `tokens()` is called more than once.
     pub fn tokens<const NUM_REGIONS: usize>(&mut self) -> [RegionToken; NUM_REGIONS] {
         const { assert!(NUM_REGIONS == 8 || NUM_REGIONS == 16) };
 
+        assert!(!self.took_tokens);
+        self.took_tokens = true;
+
         let regions = self.regions();
         defmt::assert!(
-            NUM_REGIONS as u8 == regions,
+            NUM_REGIONS as u8 <= regions,
             "MPU had {} regions, but we're trying to hand out {} tokens",
             regions,
             NUM_REGIONS,
