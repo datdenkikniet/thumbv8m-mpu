@@ -4,7 +4,7 @@
 //! in a module.
 
 use crate::{
-    AttributeIndex, MemoryAttributes, Region, RegionRange,
+    AttributeIndex, MemoryAttributes, Region, RegionConfig, RegionRange,
     regs::{BaseAddress, LimitAddress, Type},
 };
 use arbitrary_int::*;
@@ -82,13 +82,17 @@ impl Mpu {
         let start = u32::from(base.base()) << 5;
         let end = u32::from(limit.limit()) << 5;
 
+        let range = RegionRange::new_unchecked(start..=end);
+
         Region {
-            range: RegionRange::new_unchecked(start..=end),
-            attribute_index: limit.attr_index().into(),
-            shareability: base.shareability().unwrap(),
-            access_permissions: base.access_permissions(),
-            execute_never: base.execute_never(),
-            enabled: limit.enable(),
+            range,
+            config: RegionConfig {
+                attribute_index: limit.attr_index().into(),
+                shareability: base.shareability().unwrap(),
+                access_permissions: base.access_permissions(),
+                execute_never: base.execute_never(),
+                enabled: limit.enable(),
+            },
         }
     }
 
@@ -133,14 +137,14 @@ impl Mpu {
         let start = *region.range.get().start() >> 5;
         let base = BaseAddress::builder()
             .with_base(u27::new(start))
-            .with_shareability(region.shareability)
-            .with_access_permissions(region.access_permissions)
-            .with_execute_never(region.execute_never)
+            .with_shareability(region.config.shareability)
+            .with_access_permissions(region.config.access_permissions)
+            .with_execute_never(region.config.execute_never)
             .build();
 
         let end = *region.range.get().end() >> 5;
         let limit = LimitAddress::builder()
-            .with_enable(region.enabled)
+            .with_enable(region.config.enabled)
             .with_attr_index(attribute_index)
             .with_limit(u27::new(end))
             .with_reserved(false)

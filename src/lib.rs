@@ -7,7 +7,6 @@ pub(crate) mod regs;
 
 #[cfg(not(test))]
 mod arch;
-use arbitrary_int::{traits::Integer, u3};
 #[cfg(not(test))]
 pub use arch::*;
 
@@ -15,10 +14,11 @@ pub use arch::*;
 mod test;
 
 mod region_aligned;
-pub use region_aligned::RegionAligned;
 
+pub use arbitrary_int::u3;
 use bitbybit::bitenum;
 use core::ops::{Range, RangeInclusive};
+pub use region_aligned::RegionAligned;
 
 /// The shareability of a memory region.
 ///
@@ -251,14 +251,12 @@ impl Into<arbitrary_int::u3> for AttributeIndex {
     }
 }
 
-/// An MPU-configurable region.
+/// An MPU region configuration.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone)]
-pub struct Region {
+#[derive(Debug, Clone, Copy)]
+pub struct RegionConfig {
     /// Whether this region is enabled.
     pub enabled: bool,
-    /// The range of addresses in this region.
-    pub range: RegionRange,
     /// This value is ignored for address ranges
     /// that have any of the [`MemoryAttributes::Device`]
     /// attributes. Regions that have [`MemoryAttributes::Device`]
@@ -274,15 +272,24 @@ pub struct Region {
     pub execute_never: bool,
 }
 
-impl Default for Region {
+impl Default for RegionConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            range: RegionRange::new_unchecked(0..=0),
             shareability: Shareability::OuterShareable,
-            attribute_index: AttributeIndex(u3::ZERO),
-            access_permissions: AccessPermissions::PrivilegedReadOnly,
-            execute_never: true,
+            attribute_index: const { AttributeIndex::new(0).unwrap() },
+            access_permissions: AccessPermissions::AnyReadWrite,
+            execute_never: false,
         }
     }
+}
+
+/// An MPU-configurable region.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, Clone)]
+pub struct Region {
+    /// The configuration of this Region.
+    pub config: RegionConfig,
+    /// The range of addresses in this region.
+    pub range: RegionRange,
 }

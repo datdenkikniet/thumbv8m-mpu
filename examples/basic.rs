@@ -4,7 +4,8 @@
 use arbitrary_int::u3;
 use cortex_m_rt as _;
 use thumbv8m_mpu::{
-    AccessPermissions, AttributeIndex, MemoryAttributes, Mpu, Region, RegionAligned, Shareability,
+    AccessPermissions, AttributeIndex, MemoryAttributes, Mpu, Region, RegionAligned, RegionConfig,
+    Shareability,
 };
 
 #[panic_handler]
@@ -25,22 +26,22 @@ fn main() -> ! {
 
     mpu.set_attributes(non_cacheable_index, MemoryAttributes::non_cacheable());
 
-    let region_static = Region {
+    let config = RegionConfig {
         enabled: true,
-        range: STATIC_DMA_MEMORY.as_range(),
         attribute_index: non_cacheable_index,
         shareability: Shareability::OuterShareable,
         access_permissions: AccessPermissions::AnyReadWrite,
         execute_never: false,
     };
 
+    let region_static = Region {
+        range: STATIC_DMA_MEMORY.as_range(),
+        config,
+    };
+
     let region_dynamic = Region {
-        enabled: true,
         range: dynamic_dma_memory.as_range(),
-        attribute_index: non_cacheable_index,
-        shareability: Shareability::OuterShareable,
-        access_permissions: AccessPermissions::AnyReadWrite,
-        execute_never: false,
+        config,
     };
 
     mpu.set_region(&mut tokens[0], region_static).unwrap();
