@@ -257,10 +257,11 @@ impl Into<arbitrary_int::u3> for AttributeIndex {
 pub struct RegionConfig {
     /// Whether this region is enabled.
     pub enabled: bool,
-    /// This value is ignored for address ranges
-    /// that have any of the [`MemoryAttributes::Device`]
-    /// attributes. Regions that have [`MemoryAttributes::Device`]
-    /// are always considered to be fully shared.
+    /// The ways in which a region is shared.
+    ///
+    /// For a config whose [`AttributeIndex`] configuration points
+    /// to a [`MemoryAttributes::Device`], this value is ignored.
+    /// Regions with that attribute are always fully shared.
     pub shareability: Shareability,
     /// The index of the [`MemoryAttributes`] that should be
     /// assigned to this region.
