@@ -1,4 +1,5 @@
 use core::ops::{Deref, DerefMut};
+use core::num::NonZeroU32;
 
 use crate::RegionRange;
 
@@ -34,9 +35,13 @@ impl<T, const PADDING: usize> RegionAligned<T, PADDING> {
     /// Get the region range that this [`RegionAligned`] value
     /// occupies.
     pub fn as_range(&self) -> RegionRange {
-        let start = self as *const _ as usize as u32;
-        let end = start + core::mem::size_of::<RegionAligned<T, PADDING>>() as u32 - 1;
-        RegionRange::new_unchecked(start..=end)
+        let start_address = self as *const _ as usize as u32;
+        if let Some(non_zero_size) = NonZeroU32::new(core::mem::size_of::<Self>() as u32) {
+            let last_address = start_address + non_zero_size.get() - 1;
+            RegionRange::new_unchecked(start_address..=last_address)
+        } else {
+            RegionRange::new_unchecked(start_address..=start_address)
+        }
     }
 
     /// Take the inner value out of this aligned struct.

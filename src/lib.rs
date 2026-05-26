@@ -18,7 +18,7 @@ mod region_aligned;
 pub use region_aligned::RegionAligned;
 
 use bitbybit::bitenum;
-use core::ops::RangeInclusive;
+use core::ops::{Range, RangeInclusive};
 
 /// The shareability of a memory region.
 ///
@@ -180,28 +180,35 @@ impl RegionRange {
     /// from a potentially-unaligned address.
     pub const ALIGNMENT_MASK: u32 = 0xFFFF_FFFF << (Self::REQUIRED_ALIGNMENT / 8);
 
-    /// NOTE: not `unsafe`, as invalid configurations
-    /// will raise a fault. However, don't use this function
-    /// with values not directly read from the MPU!.
+    /// Only use this function if the provided range would return
+    /// `Ok()` if constructed using `new()`
     fn new_unchecked(range: RangeInclusive<u32>) -> Self {
         Self { range }
     }
 
-    /// Create a new region from the provided raw data.
+    /// Create a new region from the provided address range.
     ///
-    /// `address` is the start address of the region, and
-    /// `size` is the size of the region in bytes.
-    ///
-    /// This function returns an error if `address` is not a multiple
-    /// of 32, or if `size + 1` is not a multiple of 32.
-    pub const fn new_raw(address: u32, size: u32) -> Result<Self, ()> {
-        let range = address..=address + size;
+    /// This function returns an error if `range.start` is not a multiple
+    /// of 32, or if `range.end` is not a multiple of 32.
+    pub const fn new(range: Range<u32>) -> Result<Self, ()> {
+        Self::new_inclusive(range.start..=range.end.saturating_sub(1))
+    }
 
-        if range.start().is_multiple_of(32) && *range.end() % 32 == 31 {
-            Ok(Self { range })
-        } else {
-            Err(())
+    /// Create a new region from the provided address range.
+    ///
+    /// This function returns an error if `range.start()` is not a multiple
+    /// of 32, or if `range.end().wrapping_add(1)` is not a multiple of 32.
+    pub const fn new_inclusive(range: RangeInclusive<u32>) -> Result<Self, ()> {
+        // If `range.end != u32::MAX`, this will not overflow.
+        // If `range.end == u32::MAX` (a correct ending), this will wrap to `0`,
+        // which is a multiple of 32.
+        let range_end_aligned = range.end().wrapping_add(1).is_multiple_of(32);
+
+        if !range.start().is_multiple_of(32) || !range_end_aligned {
+            return Err(());
         }
+
+        Ok(Self { range })
     }
 
     /// Get the raw range underpinning this region range.
