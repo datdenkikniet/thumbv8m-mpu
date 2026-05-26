@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(unused, reason = "allowed when compiling for host target"))]
 use arbitrary_int::*;
 use bitbybit::bitfield;
 

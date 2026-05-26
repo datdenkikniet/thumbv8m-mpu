@@ -1,0 +1,21 @@
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+name: thumbv8m-mpu CI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: cargo test --tests --target $(rustc --print=host-tuple)
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build basic example
+        run: cargo build --release --example basic --target thumbv8m.main-none-eabihf
