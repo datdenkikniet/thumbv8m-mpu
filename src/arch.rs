@@ -12,6 +12,8 @@ use cortex_m::peripheral::MPU;
 
 /// A token providing access to configure a specific
 /// region.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, PartialEq)]
 pub struct RegionToken(u8);
 
 impl RegionToken {
