@@ -169,8 +169,6 @@ impl Mpu {
             }
         }
 
-        let attribute_index = u3::new(num);
-
         // No overlapping ranges, so we can set up the region.
         let start = *region.range.get().start() >> 5;
         let base = BaseAddress::builder()
@@ -183,7 +181,7 @@ impl Mpu {
         let end = *region.range.get().end() >> 5;
         let limit = LimitAddress::builder()
             .with_enable(region.config.enabled)
-            .with_attr_index(attribute_index)
+            .with_attr_index(region.config.attribute_index.into())
             .with_limit(u27::new(end))
             .with_reserved(false)
             .build();
