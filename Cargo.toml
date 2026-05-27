@@ -1,6 +1,6 @@
 [package]
 name = "thumbv8m-mpu"
-version = "0.2.0-pre"
+version = "0.1.1"
 edition = "2024"
 readme = "README.md"
 authors = [ "Johannes Cornelis Draaijer <jcdra1@gmail.com>" ]
