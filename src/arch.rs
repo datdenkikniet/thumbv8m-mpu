@@ -147,8 +147,6 @@ impl Mpu {
     ) -> Result<(), OverlappingRanges> {
         let num = token.0;
 
-        unsafe { self.mpu.rnr.write(num as _) };
-
         // Check that the requested range does not overlap with
         // any other regions.
         for other_region_num in 0..self.regions() {
@@ -168,6 +166,8 @@ impl Mpu {
                 });
             }
         }
+
+        unsafe { self.mpu.rnr.write(num as _) };
 
         // No overlapping ranges, so we can set up the region.
         let start = *region.range.get().start() >> 5;
