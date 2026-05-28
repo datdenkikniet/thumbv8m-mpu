@@ -3,6 +3,7 @@
 
 use arbitrary_int::u3;
 use cortex_m_rt as _;
+use defmt_rtt as _;
 use thumbv8m_mpu::{
     AccessPermissions, AttributeIndex, MemoryAttributes, Mpu, NormalMemoryAttributes, Region,
     RegionAligned, RegionConfig, Shareability, TransientAllocations,
@@ -23,7 +24,6 @@ fn main() -> ! {
     let mut tokens: [_; 8] = mpu.tokens();
 
     let non_cacheable_index: AttributeIndex = u3::try_new(0).unwrap().into();
-
     mpu.set_attributes(non_cacheable_index, MemoryAttributes::non_cacheable());
 
     let normal_index: AttributeIndex = u3::try_new(1).unwrap().into();
@@ -60,6 +60,8 @@ fn main() -> ! {
         .unwrap();
 
     mpu.enable(true, false);
+
+    defmt::println!("{}", mpu);
 
     loop {}
 }

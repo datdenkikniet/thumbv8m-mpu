@@ -7,7 +7,7 @@ use crate::{
     AttributeIndex, MemoryAttributes, Region, RegionConfig, RegionRange,
     regs::{BaseAddress, LimitAddress, Type},
 };
-use arbitrary_int::*;
+use arbitrary_int::{traits::Integer, u3, u27};
 use cortex_m::peripheral::MPU;
 
 /// A token providing access to configure a specific
@@ -249,6 +249,11 @@ impl Mpu {
         unsafe { self.mpu.ctrl.write(0) };
     }
 
+    /// Whether the MPU is enabled.
+    pub fn enabled(&self) -> bool {
+        self.mpu.ctrl.read() & 1 == 1
+    }
+
     /// Get the number of MPU regions supported by
     /// this MPU.
     pub fn regions(&self) -> u8 {
@@ -256,4 +261,26 @@ impl Mpu {
     }
 }
 
-// TODO: build a nice `Debug` and `defmt::Format` implementation
+#[cfg(feature = "defmt")]
+impl defmt::Format for Mpu {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "Mpu {{\n");
+        defmt::write!(fmt, "  enabled: {},\n", self.enabled());
+        defmt::write!(fmt, "  Attributes(8): [\n");
+        for idx_num in 0..u3::MAX.value() {
+            let idx = AttributeIndex(unsafe { u3::new_unchecked(idx_num) });
+            let attr = self.get_attributes(idx);
+            defmt::write!(fmt, "    {},\n", attr);
+        }
+        defmt::write!(fmt, "  ],\n");
+
+        let regions = self.regions();
+        defmt::write!(fmt, "  Regions({}): [\n", regions);
+        for region_idx in 0..regions {
+            let region = RegionToken(region_idx);
+            let region = self.get_region(&region);
+            defmt::write!(fmt, "    {},\n", region);
+        }
+        defmt::write!(fmt, "  ]\n}}");
+    }
+}

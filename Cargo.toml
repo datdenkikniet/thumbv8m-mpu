@@ -24,3 +24,13 @@ defmt = ["dep:defmt", "arbitrary-int/defmt"]
 
 [dev-dependencies]
 cortex-m-rt = "0.7.5"
+defmt-rtt = "1.1"
+critical-section = "1.2"
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
+
+[[example]]
+name = "basic"
+required-features = [ "defmt" ]
+
+[profile.release]
+debug = 2
