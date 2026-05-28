@@ -195,8 +195,9 @@ impl RegionRange {
     pub const ALIGNMENT_MASK: u32 = 0xFFFF_FFFF << (Self::REQUIRED_ALIGNMENT / 8);
 
     /// Only use this function if the provided range would return
-    /// `Ok()` if constructed using `new()`
-    fn new_unchecked(range: RangeInclusive<u32>) -> Self {
+    /// `Ok()` if constructed using `new()`, or if it is used
+    /// for a disabled region.
+    const fn new_unchecked(range: RangeInclusive<u32>) -> Self {
         Self { range }
     }
 
@@ -277,10 +278,10 @@ impl From<AttributeIndex> for arbitrary_int::u3 {
 
 /// An MPU region configuration.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct RegionConfig {
-    /// Whether this region is enabled.
-    pub enabled: bool,
+    /// The range of addresses in this region.
+    pub range: RegionRange,
     /// The ways in which a region is shared.
     ///
     /// For a config whose [`AttributeIndex`] configuration points
@@ -297,24 +298,34 @@ pub struct RegionConfig {
     pub execute_never: bool,
 }
 
-impl Default for RegionConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
+impl RegionConfig {
+    #[cfg_attr(test, expect(unused, reason = "unused in tests"))]
+    const fn disabled() -> Self {
+        RegionConfig {
+            range: RegionRange::new_unchecked(0..=0),
             shareability: Shareability::OuterShareable,
             attribute_index: const { AttributeIndex::new(0).unwrap() },
-            access_permissions: AccessPermissions::AnyReadWrite,
-            execute_never: false,
+            access_permissions: AccessPermissions::PrivilegedReadOnly,
+            execute_never: true,
         }
     }
 }
 
 /// An MPU-configurable region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone)]
-pub struct Region {
-    /// The configuration of this Region.
-    pub config: RegionConfig,
-    /// The range of addresses in this region.
-    pub range: RegionRange,
+#[derive(Debug, Clone, Default)]
+pub enum Region {
+    #[default]
+    /// The region is disabled.
+    Disabled,
+    /// The region is enabled, and has the specified
+    /// configuration.
+    Enabled(RegionConfig),
+}
+
+impl Region {
+    /// Get whether this region is enabled.
+    pub const fn is_enabled(&self) -> bool {
+        matches!(self, Self::Enabled(_))
+    }
 }
