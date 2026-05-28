@@ -147,23 +147,29 @@ impl Mpu {
     ) -> Result<(), OverlappingRanges> {
         let num = token.0;
 
-        // Check that the requested range does not overlap with
-        // any other regions.
-        for other_region_num in 0..self.regions() {
-            let other_region = if other_region_num != num {
-                self.get_region(&RegionToken(other_region_num))
-            } else {
-                continue;
-            };
+        // Access to overlapping, enabled regions causes the CPU to generate
+        // a fault. Check that none of them are overlapping.
+        if region.config.enabled {
+            for other_region_num in 0..self.regions() {
+                let other_region = if other_region_num != num {
+                    self.get_region(&RegionToken(other_region_num))
+                } else {
+                    continue;
+                };
 
-            let region = region.range.get();
-            let other_region = other_region.range.get();
+                if !other_region.config.enabled {
+                    continue;
+                }
 
-            // Manual implementation of currently-unstable `RangeInclusive::is_overlapping`
-            if (region.start() <= other_region.end()) & (other_region.start() <= region.end()) {
-                return Err(OverlappingRanges {
-                    region: other_region_num,
-                });
+                let region = region.range.get();
+                let other_region = other_region.range.get();
+
+                // Manual implementation of currently-unstable `RangeInclusive::is_overlapping`
+                if (region.start() <= other_region.end()) & (other_region.start() <= region.end()) {
+                    return Err(OverlappingRanges {
+                        region: other_region_num,
+                    });
+                }
             }
         }
 
