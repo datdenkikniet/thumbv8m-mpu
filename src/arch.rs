@@ -187,9 +187,12 @@ impl Mpu {
 
     /// Set the configuration of `token` to `region`.
     ///
-    /// `OverlappingRanges` is returned if `region` is a
-    /// [`Region::Enabled`], and its `range` overlaps with
-    /// other enabled regions.
+    /// [`Err(OverlappingRanges)`](OverlappingRanges) is returned if `region` is a
+    /// [`Region::Enabled`], and its `range` overlaps with at least one other
+    /// enabled region.
+    ///
+    /// If `Err` is returned, the configuration of `token` is unchanged from the
+    /// configuration it had before `set_region` was called.
     pub fn set_region(
         &mut self,
         token: &mut RegionToken,
