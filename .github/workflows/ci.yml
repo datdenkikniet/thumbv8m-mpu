@@ -21,6 +21,8 @@ jobs:
         run: rustup target add thumbv8m.main-none-eabihf
       - name: Build basic example
         run: cargo build --release --example basic --target thumbv8m.main-none-eabihf
+      - name: Build library without defmt
+        run: cargo build --release --lib --target thumbv8m.main-none-eabihf --no-default-features
 
   clippy:
     runs-on: ubuntu-latest
@@ -30,6 +32,8 @@ jobs:
         run: rustup target add thumbv8m.main-none-eabihf
       - name: Run clippy
         run: cargo clippy -- -Dwarnings
+      - name: Run clippy without defmt
+        run: cargo clippy --no-default-features -- -Dwarnings
 
   fmt:
     runs-on: ubuntu-latest

@@ -7,8 +7,17 @@ use crate::{
     AttributeIndex, MemoryAttributes, Region, RegionConfig, RegionRange,
     regs::{BaseAddress, LimitAddress, Type},
 };
-use arbitrary_int::{traits::Integer, u3, u27};
+use arbitrary_int::u27;
 use cortex_m::peripheral::MPU;
+
+#[cfg(feature = "defmt")]
+use {
+    arbitrary_int::{traits::Integer, u3},
+    defmt::assert,
+};
+
+#[cfg(not(feature = "defmt"))]
+use core::assert;
 
 /// A token providing access to configure a specific
 /// region.
@@ -109,13 +118,13 @@ impl Mpu {
     /// `NUM_REGIONS` is greater than the amount of regions supported
     /// by the device's MPU, or if `tokens()` is called more than once.
     pub fn tokens<const NUM_REGIONS: usize>(&mut self) -> [RegionToken; NUM_REGIONS] {
-        const { assert!(NUM_REGIONS == 8 || NUM_REGIONS == 16) };
+        const { core::assert!(NUM_REGIONS == 8 || NUM_REGIONS == 16) };
 
         assert!(!self.took_tokens);
         self.took_tokens = true;
 
         let regions = self.regions();
-        defmt::assert!(
+        assert!(
             NUM_REGIONS as u8 <= regions,
             "MPU had {} regions, but we're trying to hand out {} tokens",
             regions,
