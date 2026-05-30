@@ -7,7 +7,13 @@ use crate::{
     Shareability, TransientAllocations,
 };
 
-#[bitfield(u32, defmt_bitfields(feature = "defmt"), debug, forbid_overlaps)]
+#[bitfield(
+    u32,
+    defmt_bitfields(feature = "defmt"),
+    debug,
+    forbid_overlaps,
+    default = 0
+)]
 pub struct Control {
     #[bit(2, rw)]
     privdefena: bool,

@@ -5,7 +5,7 @@
 
 use crate::{
     AttributeIndex, MemoryAttributes, Region, RegionConfig, RegionRange,
-    regs::{BaseAddress, LimitAddress, Type},
+    regs::{BaseAddress, Control, LimitAddress, Type},
 };
 use arbitrary_int::u27;
 use cortex_m::peripheral::MPU;
@@ -53,6 +53,10 @@ pub struct Mpu {
 impl Mpu {
     fn read_type(&self) -> Type {
         Type::new_with_raw_value(self.mpu._type.read())
+    }
+
+    fn read_ctrl(&self) -> Control {
+        Control::new_with_raw_value(self.mpu.ctrl.read())
     }
 
     fn read_attribute_for(&self, num: AttributeIndex) -> u8 {
@@ -245,9 +249,13 @@ impl Mpu {
         privileged_sw_may_access_default_map: bool,
         enable_mpu_in_nmi_and_hardfault: bool,
     ) {
-        let privdefena = (privileged_sw_may_access_default_map as u32) << 2;
-        let hfnmiena = (enable_mpu_in_nmi_and_hardfault as u32) << 1;
-        unsafe { self.mpu.ctrl.write(privdefena | hfnmiena | 1) };
+        let ctrl = Control::builder()
+            .with_enable(true)
+            .with_hfnmiena(enable_mpu_in_nmi_and_hardfault)
+            .with_privdefena(privileged_sw_may_access_default_map)
+            .build();
+
+        unsafe { self.mpu.ctrl.write(ctrl.raw_value()) };
 
         cortex_m::asm::dsb();
         cortex_m::asm::isb();
@@ -255,12 +263,22 @@ impl Mpu {
 
     /// Disable the MPU
     pub fn disable(&mut self) {
-        unsafe { self.mpu.ctrl.write(0) };
+        unsafe { self.mpu.ctrl.write(Control::default().raw_value()) };
     }
 
     /// Whether the MPU is enabled.
     pub fn enabled(&self) -> bool {
-        self.mpu.ctrl.read() & 1 == 1
+        self.read_ctrl().enable()
+    }
+
+    /// Whether the PRIVDEFENA bit is set.
+    pub fn privdefena(&self) -> bool {
+        self.read_ctrl().privdefena()
+    }
+
+    /// Whether the HFNMIENA bit is set.
+    pub fn hfnmiena(&self) -> bool {
+        self.read_ctrl().hfnmiena()
     }
 
     /// Get the number of MPU regions supported by
@@ -273,8 +291,12 @@ impl Mpu {
 #[cfg(feature = "defmt")]
 impl defmt::Format for Mpu {
     fn format(&self, fmt: defmt::Formatter) {
+        let ctrl = self.read_ctrl();
+
         defmt::write!(fmt, "Mpu {{\n");
-        defmt::write!(fmt, "  enabled: {},\n", self.enabled());
+        defmt::write!(fmt, "  enabled: {},\n", ctrl.enable());
+        defmt::write!(fmt, "  privdefena: {},\n", ctrl.privdefena());
+        defmt::write!(fmt, "  hfnmiena: {},\n", ctrl.hfnmiena());
         defmt::write!(fmt, "  Attributes(8): [\n");
         for idx_num in 0..u3::MAX.value() {
             let idx = AttributeIndex(unsafe { u3::new_unchecked(idx_num) });
