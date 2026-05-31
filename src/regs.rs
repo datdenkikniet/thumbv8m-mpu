@@ -7,6 +7,7 @@ use crate::{
     Shareability, TransientAllocations,
 };
 
+/// The control register of an MPU.
 #[bitfield(
     u32,
     defmt_bitfields(feature = "defmt"),
@@ -15,10 +16,19 @@ use crate::{
     default = 0
 )]
 pub struct Control {
+    /// The PRIVDEFENA bit.
+    ///
+    /// If this bit is set, privileged software is allowed to access memory
+    /// that is not covered by an enabled region according to the default map.
     #[bit(2, rw)]
     privdefena: bool,
+    /// The HFNMIENA bit.
+    ///
+    /// If this bit is set, the MPU is active during execution of the `HardFault` and
+    /// `NonMaskableInterrupt` exeception handlers.
     #[bit(1, rw)]
     hfnmiena: bool,
+    /// Whether the MPU is enabled or not.
     #[bit(0, rw)]
     enable: bool,
 }

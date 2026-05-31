@@ -7,18 +7,20 @@ pub(crate) mod regs;
 
 #[cfg(not(test))]
 mod arch;
-#[cfg(not(test))]
-pub use arch::*;
-
+mod ll;
+mod region_aligned;
 #[cfg(test)]
 mod test;
 
-mod region_aligned;
-
-pub use arbitrary_int::u3;
+pub use crate::regs::Control;
+use arbitrary_int::u3;
 use bitbybit::bitenum;
 use core::ops::{Range, RangeInclusive};
+pub use ll::{LlMpu, OverlappingRanges};
 pub use region_aligned::RegionAligned;
+
+/// The default, low-level MPU.
+pub type Mpu = LlMpu<cortex_m::peripheral::MPU>;
 
 /// The shareability of a memory region.
 ///
@@ -235,6 +237,12 @@ impl RegionRange {
     pub fn get(&self) -> RangeInclusive<u32> {
         self.range.clone()
     }
+
+    /// Check whether this region overlaps with another.
+    pub fn overlaps(&self, other: &Self) -> bool {
+        // Manual implementation of currently-unstable `RangeInclusive::is_overlapping`
+        (self.range.start() <= other.range.end()) & (other.range.start() <= self.range.end())
+    }
 }
 
 /// The index of a specific [`MemoryAttributes`] configuration.
@@ -298,19 +306,6 @@ pub struct RegionConfig {
     pub execute_never: bool,
 }
 
-impl RegionConfig {
-    #[cfg_attr(test, expect(unused, reason = "unused in tests"))]
-    const fn disabled() -> Self {
-        RegionConfig {
-            range: RegionRange::new_unchecked(0..=0),
-            shareability: Shareability::OuterShareable,
-            attribute_index: const { AttributeIndex::new(0).unwrap() },
-            access_permissions: AccessPermissions::PrivilegedReadOnly,
-            execute_never: true,
-        }
-    }
-}
-
 /// An MPU-configurable region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Default)]
@@ -328,4 +323,41 @@ impl Region {
     pub const fn is_enabled(&self) -> bool {
         matches!(self, Self::Enabled(_))
     }
+}
+
+/// A token providing access to configure a specific
+/// region.
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Debug, PartialEq)]
+pub struct RegionToken(pub(crate) u8);
+
+impl RegionToken {
+    /// Get the raw index of this token.
+    pub fn get(&self) -> u8 {
+        self.0
+    }
+}
+
+/// An implementation of the ARMv8-M MPU.
+pub trait MpuImpl {
+    /// The amount of regions supported by this MPU.
+    fn regions(&self) -> u8;
+
+    /// Read the memory attributes configuration for the item at
+    /// index `index`.
+    fn attributes(&self, index: AttributeIndex) -> MemoryAttributes;
+    /// Set the memory attributes configuration for the item at
+    /// index `index` to `attrs`.
+    fn set_attributes(&self, index: AttributeIndex, attrs: MemoryAttributes);
+
+    /// Read the control register.
+    fn control(&self) -> Control;
+    /// Set the control register to `control`.
+    fn set_control(&mut self, control: Control);
+
+    /// Get the configuration of the region associated with `token`.
+    fn region(&self, token: &RegionToken) -> Region;
+    /// Set the configuration of the region associated with `token` to
+    /// `region`.
+    fn set_region(&mut self, token: &mut RegionToken, region: &Region);
 }
