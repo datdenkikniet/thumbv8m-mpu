@@ -321,3 +321,10 @@ impl<Impl: MpuImpl> AllocMpu<Impl> {
         self.inner.regions()
     }
 }
+
+#[cfg(feature = "defmt")]
+impl<Impl: MpuImpl> defmt::Format for AllocMpu<Impl> {
+    fn format(&self, fmt: defmt::Formatter) {
+        crate::mpu_defmt(&self.inner, fmt)
+    }
+}

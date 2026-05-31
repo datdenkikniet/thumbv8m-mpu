@@ -9,10 +9,7 @@ use crate::{
 };
 
 #[cfg(feature = "defmt")]
-use {
-    arbitrary_int::{traits::Integer, u3},
-    defmt::assert,
-};
+use defmt::assert;
 
 #[cfg(not(feature = "defmt"))]
 use core::assert;
@@ -191,27 +188,6 @@ impl<Impl: MpuImpl> LlMpu<Impl> {
 #[cfg(feature = "defmt")]
 impl<Impl: MpuImpl> defmt::Format for LlMpu<Impl> {
     fn format(&self, fmt: defmt::Formatter) {
-        let ctrl = self.mpu.control();
-
-        defmt::write!(fmt, "Mpu {{\n");
-        defmt::write!(fmt, "  enabled: {},\n", ctrl.enable());
-        defmt::write!(fmt, "  privdefena: {},\n", ctrl.privdefena());
-        defmt::write!(fmt, "  hfnmiena: {},\n", ctrl.hfnmiena());
-        defmt::write!(fmt, "  Attributes(8): [\n");
-        for idx_num in 0..u3::MAX.value() {
-            let idx = AttributeIndex(unsafe { u3::new_unchecked(idx_num) });
-            let attr = self.attributes(idx);
-            defmt::write!(fmt, "    {},\n", attr);
-        }
-        defmt::write!(fmt, "  ],\n");
-
-        let regions = self.regions();
-        defmt::write!(fmt, "  Regions({}): [\n", regions);
-        for region_idx in 0..regions {
-            let region = RegionToken(region_idx);
-            let region = self.region(&region);
-            defmt::write!(fmt, "    {},\n", region);
-        }
-        defmt::write!(fmt, "  ]\n}}");
+        crate::mpu_defmt(&self.mpu, fmt)
     }
 }

@@ -21,6 +21,7 @@ pub use alloc::{AllocMpu, DeviceRegion, RegionGroup, RegionGroupError};
 use arbitrary_int::u3;
 use bitbybit::bitenum;
 use core::ops::{Range, RangeInclusive};
+pub use cortex_m::peripheral::MPU;
 pub use ll::{LlMpu, OverlappingRanges};
 pub use region_aligned::RegionAligned;
 
@@ -365,4 +366,32 @@ pub trait MpuImpl {
     /// Set the configuration of the region associated with `token` to
     /// `region`.
     fn set_region(&mut self, token: &mut RegionToken, region: &Region);
+}
+
+#[cfg(feature = "defmt")]
+fn mpu_defmt(mpu: &impl MpuImpl, fmt: defmt::Formatter) {
+    use arbitrary_int::traits::Integer;
+
+    let ctrl = mpu.control();
+
+    defmt::write!(fmt, "Mpu {{\n");
+    defmt::write!(fmt, "  enabled: {},\n", ctrl.enable());
+    defmt::write!(fmt, "  privdefena: {},\n", ctrl.privdefena());
+    defmt::write!(fmt, "  hfnmiena: {},\n", ctrl.hfnmiena());
+    defmt::write!(fmt, "  Attributes(8): [\n");
+    for idx_num in 0..u3::MAX.value() {
+        let idx = AttributeIndex(unsafe { u3::new_unchecked(idx_num) });
+        let attr = mpu.attributes(idx);
+        defmt::write!(fmt, "    {},\n", attr);
+    }
+    defmt::write!(fmt, "  ],\n");
+
+    let regions = mpu.regions();
+    defmt::write!(fmt, "  Regions({}): [\n", regions);
+    for region_idx in 0..regions {
+        let region = RegionToken(region_idx);
+        let region = mpu.region(&region);
+        defmt::write!(fmt, "    {},\n", region);
+    }
+    defmt::write!(fmt, "  ]\n}}");
 }
