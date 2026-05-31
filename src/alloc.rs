@@ -96,6 +96,14 @@ impl<const N: usize> RegionGroup<N> {
 
 /// An MPU implementation that handles allocation of
 /// attributes and regions internally.
+///
+/// The MPU supports:
+/// * 8 distrinct memory attribute configurations (i.e. 8 [`RegionGroup`]s with
+///   whose memory attributes are distinct).
+/// * 8 or 16 regions (i.e. 8 or 16 non-contiguous [`RegionRange`]s).
+///
+/// This implementation will try its best to re-use memory attributes if
+/// they have already been configured.
 #[derive(Debug)]
 pub struct AllocMpu<Impl: MpuImpl> {
     pub(crate) inner: Impl,
@@ -178,7 +186,8 @@ impl<Impl: MpuImpl> AllocMpu<Impl> {
 
     /// Enable a group of regions.
     ///
-    /// If an error is returned, the MPU state remains unchanged.
+    /// The update performed by this function is functionally atomic, that is:
+    /// if an error is returned, no partial configuration is applied.
     ///
     /// Note that this change does not take effect unless
     /// [`AllocMpu::enable`] is called.

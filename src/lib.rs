@@ -1,5 +1,8 @@
-//! High-level support for the Memory Protection Unit
+//! High-level support for the Memory Protection Unit (MPU)
 //! on ARM thumbv8-m based microcontrollers.
+//!
+//! The MPU supports up to 8 distinct memory attribute configurations,
+//! and 8 or 16 region configurations.
 #![warn(missing_docs)]
 #![cfg_attr(not(test), no_std)]
 
