@@ -68,7 +68,7 @@ pub enum AccessPermissions {
 
 /// The memory attributes of a region.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MemoryAttributes {
     /// The memory in this region is a device memory.
     Device(DeviceMemoryAttributes),
@@ -98,7 +98,7 @@ impl MemoryAttributes {
 /// to the region will cause a cache-line to be allocated
 /// for the addresses that this operation is performed on.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NormalMemoryAttributes {
     /// Transient (i.e. little-used) write-through
     /// memory.
@@ -132,7 +132,7 @@ pub enum NormalMemoryAttributes {
 /// For more information on what allocations mean, see
 /// [NormalMemoryAttributes](./enum.NormalMemoryAttributes.html#allocating).
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TransientAllocations {
     /// Writes allocate cache lines.
     AllocateWrites,
@@ -144,7 +144,7 @@ pub enum TransientAllocations {
 
 /// Memory attributes for regions of device memory.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[bitenum(u2, exhaustive = true)]
 pub enum DeviceMemoryAttributes {
     /// The device memory has the Non Gathering, Non Reordering,
@@ -267,7 +267,7 @@ impl AttributeIndex {
     }
 
     /// Get the value of this [`AttributeIndex`].
-    pub fn get(&self) -> u8 {
+    pub const fn get(&self) -> u8 {
         self.0.value()
     }
 }
@@ -348,7 +348,7 @@ pub trait MpuImpl {
     fn attributes(&self, index: AttributeIndex) -> MemoryAttributes;
     /// Set the memory attributes configuration for the item at
     /// index `index` to `attrs`.
-    fn set_attributes(&self, index: AttributeIndex, attrs: MemoryAttributes);
+    fn set_attributes(&mut self, index: AttributeIndex, attrs: MemoryAttributes);
 
     /// Read the control register.
     fn control(&self) -> Control;

@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Run tests
-        run: cargo test --tests --target $(rustc --print=host-tuple)
+        run: cargo test --tests --target host-tuple --no-default-features
 
   build:
     runs-on: ubuntu-latest

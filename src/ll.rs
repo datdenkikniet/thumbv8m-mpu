@@ -83,7 +83,7 @@ impl<Impl: MpuImpl> LlMpu<Impl> {
     /// Set the attributes at `index` to `attributes`.
     ///
     /// This affect all regions whose `index` is set to `index`.
-    pub fn set_attributes(&self, index: AttributeIndex, attributes: MemoryAttributes) {
+    pub fn set_attributes(&mut self, index: AttributeIndex, attributes: MemoryAttributes) {
         self.mpu.set_attributes(index, attributes);
     }
 

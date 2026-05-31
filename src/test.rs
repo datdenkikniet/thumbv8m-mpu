@@ -1,4 +1,55 @@
+mod ll;
+
 use crate::*;
+
+struct MockMpu<const N: usize> {
+    ctrl: Control,
+    attributes: [MemoryAttributes; 8],
+    regions: [Region; N],
+}
+
+impl<const N: usize> MockMpu<N> {
+    pub const fn new() -> Self {
+        // Testing other sizes is nonsensical
+        const { core::assert!(N == 8 || N == 16) };
+
+        Self {
+            ctrl: Control::ZERO,
+            attributes: [const { MemoryAttributes::non_cacheable() }; _],
+            regions: [const { Region::Disabled }; _],
+        }
+    }
+}
+
+impl<const N: usize> crate::MpuImpl for MockMpu<N> {
+    fn regions(&self) -> u8 {
+        N as _
+    }
+
+    fn attributes(&self, index: AttributeIndex) -> MemoryAttributes {
+        self.attributes[index.get() as usize]
+    }
+
+    fn set_attributes(&mut self, index: AttributeIndex, attrs: MemoryAttributes) {
+        self.attributes[index.get() as usize] = attrs;
+    }
+
+    fn control(&self) -> Control {
+        self.ctrl
+    }
+
+    fn set_control(&mut self, control: Control) {
+        self.ctrl = control;
+    }
+
+    fn region(&self, token: &RegionToken) -> Region {
+        self.regions[token.0 as usize].clone()
+    }
+
+    fn set_region(&mut self, token: &mut RegionToken, region: &Region) {
+        self.regions[token.0 as usize] = region.clone();
+    }
+}
 
 #[test]
 fn aligned_valid_len_region() {

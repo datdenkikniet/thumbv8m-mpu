@@ -9,6 +9,12 @@ use crate::{
     regs::{BaseAddress, LimitAddress, Type},
 };
 
+#[cfg(feature = "defmt")]
+use defmt::assert;
+
+#[cfg(not(feature = "defmt"))]
+use core::assert;
+
 impl MpuImpl for cortex_m::peripheral::MPU {
     fn regions(&self) -> u8 {
         Type::new_with_raw_value(self._type.read()).dregion()
@@ -23,7 +29,7 @@ impl MpuImpl for cortex_m::peripheral::MPU {
         MemoryAttributes::decode(value)
     }
 
-    fn set_attributes(&self, index: AttributeIndex, attrs: MemoryAttributes) {
+    fn set_attributes(&mut self, index: AttributeIndex, attrs: MemoryAttributes) {
         let num = index.get();
         let index = (num / 4) as usize;
         let shift = (num % 4) * 8;
@@ -33,9 +39,12 @@ impl MpuImpl for cortex_m::peripheral::MPU {
     }
 
     fn region(&self, token: &RegionToken) -> Region {
+        let num = token.0;
+
+        assert!(num < self.regions());
         // SAFETY: the side-effect of writing a different set
         // of region registers is accounted for.
-        unsafe { self.rnr.write(token.0 as _) };
+        unsafe { self.rnr.write(num as _) };
         let limit = LimitAddress::new_with_raw_value(self.rlar.read());
         let base = BaseAddress::new_with_raw_value(self.rbar.read());
         let start = u32::from(base.base()) << 5;
@@ -59,10 +68,10 @@ impl MpuImpl for cortex_m::peripheral::MPU {
     fn set_region(&mut self, token: &mut RegionToken, region: &Region) {
         let num = token.0;
 
+        assert!(num < self.regions());
         unsafe { self.rnr.write(num as _) };
 
         if let Region::Enabled(region) = region {
-            // No overlapping ranges, so we can set up the region.
             let start = *region.range.get().start() >> 5;
             let base = BaseAddress::builder()
                 .with_base(arbitrary_int::u27::new(start))
