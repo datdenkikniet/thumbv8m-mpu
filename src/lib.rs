@@ -5,6 +5,7 @@
 
 pub(crate) mod regs;
 
+pub mod alloc;
 #[cfg(not(test))]
 mod arch;
 mod ll;
@@ -13,6 +14,7 @@ mod region_aligned;
 mod test;
 
 pub use crate::regs::Control;
+pub use alloc::{AllocMpu, DeviceRegion, RegionGroup, RegionGroupError};
 use arbitrary_int::u3;
 use bitbybit::bitenum;
 use core::ops::{Range, RangeInclusive};

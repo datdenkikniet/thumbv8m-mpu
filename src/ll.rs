@@ -31,8 +31,8 @@ pub struct OverlappingRanges {
 
 /// The thumbv8m MPU.
 pub struct LlMpu<Impl: MpuImpl> {
-    mpu: Impl,
-    pub(crate) took_tokens: bool,
+    pub(crate) mpu: Impl,
+    took_tokens: bool,
 }
 
 impl<Impl: MpuImpl> LlMpu<Impl> {
