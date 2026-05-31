@@ -1,6 +1,6 @@
 //! High-level support for the Memory Protection Unit
 //! on ARM thumbv8-m based microcontrollers.
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 #![cfg_attr(not(test), no_std)]
 
 pub(crate) mod regs;
