@@ -2,19 +2,14 @@ use arbitrary_int::{traits::Integer, u3};
 
 use crate::{
     AccessPermissions, AttributeIndex, DeviceMemoryAttributes, LlMpu, MemoryAttributes, Region,
-    RegionConfig, RegionRange, RegionToken, Shareability, test::MockMpu,
+    RegionConfig, RegionToken, Shareability,
+    test::{MockMpu, REGIONS, nonoverlapping_ranges},
 };
-
-fn nonoverlapping_ranges() -> impl Iterator<Item = RegionRange> {
-    (0..)
-        .step_by(32)
-        .map(|v| RegionRange::new(v..v + 32).unwrap())
-}
 
 #[test]
 fn can_assign_all() {
-    let mut mpu = LlMpu::new(MockMpu::<8>::new());
-    let mut tokens = mpu.tokens::<8>();
+    let mut mpu = LlMpu::new(MockMpu::<REGIONS>::new());
+    let mut tokens = mpu.tokens::<REGIONS>();
 
     for (token, range) in tokens.iter_mut().zip(nonoverlapping_ranges()) {
         let region = &Region::Enabled(RegionConfig {
@@ -34,8 +29,8 @@ fn can_assign_all() {
 
 #[test]
 fn disable_region() {
-    let mut mpu = LlMpu::new(MockMpu::<8>::new());
-    let mut tokens = mpu.tokens::<8>();
+    let mut mpu = LlMpu::new(MockMpu::<REGIONS>::new());
+    let mut tokens = mpu.tokens::<REGIONS>();
 
     for (token, range) in tokens.iter_mut().zip(nonoverlapping_ranges()) {
         let region = &Region::Enabled(RegionConfig {
@@ -67,8 +62,8 @@ fn disable_region() {
 
 #[test]
 fn cannot_assign_overlapping() {
-    let mut mpu = LlMpu::new(MockMpu::<8>::new());
-    let [mut t0, mut t1, ..] = mpu.tokens::<8>();
+    let mut mpu = LlMpu::new(MockMpu::<REGIONS>::new());
+    let [mut t0, mut t1, ..] = mpu.tokens::<REGIONS>();
 
     let range = nonoverlapping_ranges().next().unwrap();
 
@@ -87,16 +82,16 @@ fn cannot_assign_overlapping() {
 #[test]
 #[should_panic]
 fn can_take_tokens_only_once() {
-    let mut mpu = LlMpu::new(MockMpu::<8>::new());
+    let mut mpu = LlMpu::new(MockMpu::<REGIONS>::new());
 
-    let _tokens: [_; 8] = mpu.tokens();
+    let _tokens: [_; REGIONS] = mpu.tokens();
 
-    let _: [_; 8] = mpu.tokens();
+    let _: [_; REGIONS] = mpu.tokens();
 }
 
 #[test]
 fn can_set_all_attributes() {
-    let mut mpu = LlMpu::new(MockMpu::<8>::new());
+    let mut mpu = LlMpu::new(MockMpu::<REGIONS>::new());
 
     let config = MemoryAttributes::Device(DeviceMemoryAttributes::NonGatheringNonReordering);
 

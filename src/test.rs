@@ -1,11 +1,30 @@
+mod alloc;
 mod ll;
 
 use crate::*;
 
+const REGIONS: usize = if let Some(v) = option_env!("TEST_REGION_COUNT") {
+    if let Ok(v) = usize::from_str_radix(v, 10) {
+        v
+    } else {
+        panic!("Invalid test region count");
+    }
+} else {
+    8
+};
+
+fn nonoverlapping_ranges() -> impl Iterator<Item = RegionRange> {
+    (0..)
+        .step_by(32)
+        .map(|v| RegionRange::new(v..v + 32).unwrap())
+}
+
+#[derive(Debug)]
 struct MockMpu<const N: usize> {
     ctrl: Control,
     attributes: [MemoryAttributes; 8],
     regions: [Region; N],
+    region_writes: [usize; N],
 }
 
 impl<const N: usize> MockMpu<N> {
@@ -17,6 +36,7 @@ impl<const N: usize> MockMpu<N> {
             ctrl: Control::ZERO,
             attributes: [const { MemoryAttributes::non_cacheable() }; _],
             regions: [const { Region::Disabled }; _],
+            region_writes: [0; _],
         }
     }
 }
@@ -47,7 +67,9 @@ impl<const N: usize> crate::MpuImpl for MockMpu<N> {
     }
 
     fn set_region(&mut self, token: &mut RegionToken, region: &Region) {
-        self.regions[token.0 as usize] = region.clone();
+        let index = token.0 as usize;
+        self.region_writes[index] += 1;
+        self.regions[index] = region.clone();
     }
 }
 

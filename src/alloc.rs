@@ -96,6 +96,7 @@ impl<const N: usize> RegionGroup<N> {
 
 /// An MPU implementation that handles allocation of
 /// attributes and regions internally.
+#[derive(Debug)]
 pub struct AllocMpu<Impl: MpuImpl> {
     pub(crate) inner: Impl,
 }
