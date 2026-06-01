@@ -235,6 +235,12 @@ impl RegionRange {
     pub fn get(&self) -> RangeInclusive<u32> {
         self.range.clone()
     }
+
+    /// Check whether this region overlaps with another.
+    pub fn overlaps(&self, other: &Self) -> bool {
+        // Manual implementation of currently-unstable `RangeInclusive::is_overlapping`
+        (self.range.start() <= other.range.end()) & (other.range.start() <= self.range.end())
+    }
 }
 
 /// The index of a specific [`MemoryAttributes`] configuration.
