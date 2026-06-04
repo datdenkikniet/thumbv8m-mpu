@@ -133,7 +133,7 @@ fn start_greater_than_end_exclusive() {
 
 #[test]
 fn region_from_aligned_struct() {
-    let aligned = RegionAligned::<_, 0>::new([0u8; 32]);
+    let aligned = RegionAligned::new([0u8; 32]);
     let region = aligned.as_range();
 
     assert!(
@@ -144,5 +144,21 @@ fn region_from_aligned_struct() {
     );
 
     let diff = region.range.end() - region.range.start();
-    assert_eq!(diff, 31)
+    assert_eq!(diff, 31);
 }
+
+macro_rules ! alignment_aligns {
+    ($($size:expr),+) => {
+        const fn _values() {
+            let _values = ($({
+                const VALUE: RegionAligned<[u8; $size]> = RegionAligned::new([0; _]);
+                VALUE
+            },)+);
+        }
+    }
+}
+
+alignment_aligns!(
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+    27, 28, 29, 30, 31, 32, 33, 1023, 67, 42
+);

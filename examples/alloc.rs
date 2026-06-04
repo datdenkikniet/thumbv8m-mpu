@@ -12,9 +12,9 @@ use thumbv8m_mpu::{
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    static mut STATIC_DMA_MEMORY: RegionAligned<[u8; 1023], 1> = RegionAligned::new([0u8; _]);
+    static mut STATIC_DMA_MEMORY: RegionAligned<[u8; 1023]> = RegionAligned::new([0u8; _]);
 
-    let dynamic_dma_memory: RegionAligned<[u8; 1022], 2> = RegionAligned::new([0u8; _]);
+    let dynamic_dma_memory: RegionAligned<[u8; 1022]> = RegionAligned::new([0u8; _]);
     let peripherals = cortex_m::Peripherals::take().unwrap();
     let mut mpu = AllocMpu::new(peripherals.MPU);
 

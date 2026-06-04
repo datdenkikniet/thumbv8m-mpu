@@ -7,39 +7,45 @@ use core::num::NonZeroU32;
 /// `core::mem::size_of::<T>() + PADDING % 32 == 0`.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[derive(Debug, Clone, Copy)]
-#[repr(C, align(32))]
-pub struct RegionAligned<T, const PADDING: usize> {
+#[repr(align(32))]
+pub struct RegionAligned<T> {
     inner: T,
-    _padding: [u8; PADDING],
 }
 
-impl<T, const PADDING: usize> RegionAligned<T, PADDING> {
+impl<T> RegionAligned<T> {
+    const SIZE: NonZeroU32 = const {
+        let size = core::mem::size_of::<Self>();
+        if size > u32::MAX as usize {
+            panic!("Cannot construct a `RegionAligned` whose size is bigger than u32::MAX");
+        };
+
+        let size = size as u32;
+
+        assert!(
+            size.is_multiple_of(RegionRange::REQUIRED_ALIGNMENT as _),
+            "Being able to construct a `RegionAligned` whose size not a multiple of Region::REQUIRED_ALIGNMENT is a bug. Please report it."
+        );
+
+        let Some(size) = NonZeroU32::new(size) else {
+            panic!("A `RegionAligned` ZST is illogical and cannot be used correctly.")
+        };
+
+        size
+    };
+
     /// Create a new [`RegionAligned`] with the provided inner
     /// value.
     pub const fn new(value: T) -> Self {
-        const {
-            assert!(
-                core::mem::size_of::<Self>().is_multiple_of(RegionRange::REQUIRED_ALIGNMENT as _),
-                "Tried to construct a `RegionAligned` whose size not a multiple of Region::REQUIRED_ALIGNMENT bytes. Adjust its padding to fix the problem"
-            )
-        }
-
-        Self {
-            inner: value,
-            _padding: [0u8; _],
-        }
+        let _assert_size = Self::SIZE;
+        Self { inner: value }
     }
 
     /// Get the region range that this [`RegionAligned`] value
     /// occupies.
     pub fn as_range(&self) -> RegionRange {
         let start_address = self as *const _ as usize as u32;
-        if let Some(non_zero_size) = NonZeroU32::new(core::mem::size_of::<Self>() as u32) {
-            let last_address = start_address + non_zero_size.get() - 1;
-            RegionRange::new_unchecked(start_address..=last_address)
-        } else {
-            RegionRange::new_unchecked(start_address..=start_address)
-        }
+        let last_address = start_address + Self::SIZE.get() - 1;
+        RegionRange::new_unchecked(start_address..=last_address)
     }
 
     /// Take the inner value out of this aligned struct.
@@ -54,34 +60,33 @@ impl<T, const PADDING: usize> RegionAligned<T, PADDING> {
     }
 }
 
-impl<T: Default, const PADDING: usize> Default for RegionAligned<T, PADDING> {
+impl<T: Default> Default for RegionAligned<T> {
     fn default() -> Self {
         RegionAligned {
             inner: T::default(),
-            _padding: [0u8; _],
         }
     }
 }
 
-impl<T, const PADDING: usize> From<&RegionAligned<T, PADDING>> for RegionRange {
-    fn from(val: &RegionAligned<T, PADDING>) -> Self {
+impl<T> From<&RegionAligned<T>> for RegionRange {
+    fn from(val: &RegionAligned<T>) -> Self {
         val.as_range()
     }
 }
 
-impl<T, const PADDING: usize> From<&mut RegionAligned<T, PADDING>> for RegionRange {
-    fn from(val: &mut RegionAligned<T, PADDING>) -> Self {
+impl<T> From<&mut RegionAligned<T>> for RegionRange {
+    fn from(val: &mut RegionAligned<T>) -> Self {
         val.as_range()
     }
 }
 
-impl<T, const PADDING: usize> AsRef<T> for RegionAligned<T, PADDING> {
+impl<T> AsRef<T> for RegionAligned<T> {
     fn as_ref(&self) -> &T {
         &self.inner
     }
 }
 
-impl<T, const PADDING: usize> AsMut<T> for RegionAligned<T, PADDING> {
+impl<T> AsMut<T> for RegionAligned<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.inner
     }
