@@ -7,7 +7,7 @@ use defmt_rtt as _;
 use panic_probe as _;
 use thumbv8m_mpu::{
     AccessPermissions, AllocMpu, DeviceRegion, NormalMemoryAttributes, RegionAligned, RegionGroup,
-    Shareability, TransientAllocations, dynamic::NormalRegion,
+    Shareability, TransientAllocations, alloc::NormalRegion,
 };
 
 #[cortex_m_rt::entry]
