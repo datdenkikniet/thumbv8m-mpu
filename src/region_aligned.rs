@@ -1,7 +1,5 @@
-use core::num::NonZeroU32;
-use core::ops::{Deref, DerefMut};
-
 use crate::RegionRange;
+use core::num::NonZeroU32;
 
 /// A region-aligned value.
 ///
@@ -71,16 +69,14 @@ impl<T, const PADDING: usize> From<&mut RegionAligned<T, PADDING>> for RegionRan
     }
 }
 
-impl<T, const PADDING: usize> Deref for RegionAligned<T, PADDING> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
+impl<T, const PADDING: usize> AsRef<T> for RegionAligned<T, PADDING> {
+    fn as_ref(&self) -> &T {
         &self.inner
     }
 }
 
-impl<T, const PADDING: usize> DerefMut for RegionAligned<T, PADDING> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
+impl<T, const PADDING: usize> AsMut<T> for RegionAligned<T, PADDING> {
+    fn as_mut(&mut self) -> &mut T {
         &mut self.inner
     }
 }
