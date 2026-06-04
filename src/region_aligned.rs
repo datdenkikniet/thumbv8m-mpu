@@ -43,6 +43,12 @@ impl<T, const PADDING: usize> RegionAligned<T, PADDING> {
     }
 
     /// Take the inner value out of this aligned struct.
+    ///
+    /// # Memory region
+    /// This moves the value out of its original location. It will
+    /// therefore no longer be contained in the memory range that was once
+    /// returned by its [`RegionAligned::as_range`], and will no longer have
+    /// the memory attributes that were configured for that range.
     pub fn into_inner(self) -> T {
         self.inner
     }
