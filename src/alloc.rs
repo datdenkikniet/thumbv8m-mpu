@@ -86,7 +86,17 @@ pub enum RegionGroup<const N: usize> {
 impl<const N: usize> RegionGroup<N> {
     /// Create a new region group, whose memory should be marked
     /// as non-cacheable.
-    pub const fn non_cacheable(regions: [DeviceRegion; N]) -> Self {
+    pub const fn normal_non_cacheable(regions: [NormalRegion; N]) -> Self {
+        Self::Normal {
+            inner: NormalMemoryAttributes::NonCacheable,
+            outer: NormalMemoryAttributes::NonCacheable,
+            regions,
+        }
+    }
+
+    /// Create a new region group, whose memory is marked as
+    /// nGnRnE device memory.
+    pub const fn device(regions: [DeviceRegion; N]) -> Self {
         Self::Device {
             attributes: DeviceMemoryAttributes::None,
             regions,

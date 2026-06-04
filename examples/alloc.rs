@@ -6,8 +6,8 @@ use defmt::unwrap;
 use defmt_rtt as _;
 use panic_probe as _;
 use thumbv8m_mpu::{
-    AccessPermissions, AllocMpu, DeviceRegion, NormalMemoryAttributes, RegionAligned, RegionGroup,
-    Shareability, TransientAllocations, alloc::NormalRegion,
+    AccessPermissions, AllocMpu, NormalMemoryAttributes, RegionAligned, RegionGroup, Shareability,
+    TransientAllocations, alloc::NormalRegion,
 };
 
 #[cortex_m_rt::entry]
@@ -18,9 +18,10 @@ fn main() -> ! {
     let peripherals = cortex_m::Peripherals::take().unwrap();
     let mut mpu = AllocMpu::new(peripherals.MPU);
 
-    let group_static = RegionGroup::non_cacheable([DeviceRegion {
+    let group_static = RegionGroup::normal_non_cacheable([NormalRegion {
         range: STATIC_DMA_MEMORY.as_range(),
         access_permissions: AccessPermissions::AnyReadWrite,
+        shareability: Shareability::OuterShareable,
         execute_never: false,
     }]);
 

@@ -23,7 +23,10 @@ fn main() -> ! {
     let [mut one, mut two, ..] = tokens;
 
     let non_cacheable_index: AttributeIndex = unwrap!(u3::try_new(0).ok()).into();
-    mpu.set_attributes(non_cacheable_index, MemoryAttributes::non_cacheable());
+    mpu.set_attributes(
+        non_cacheable_index,
+        MemoryAttributes::normal_non_cacheable(),
+    );
 
     let normal_index: AttributeIndex = unwrap!(u3::try_new(1).ok()).into();
     mpu.set_attributes(

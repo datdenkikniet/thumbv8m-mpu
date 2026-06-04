@@ -34,7 +34,7 @@ impl<const N: usize> MockMpu<N> {
 
         Self {
             ctrl: Control::ZERO,
-            attributes: [const { MemoryAttributes::non_cacheable() }; _],
+            attributes: [const { MemoryAttributes::Device(DeviceMemoryAttributes::None) }; _],
             regions: [const { Region::Disabled }; _],
             region_writes: [0; _],
         }
