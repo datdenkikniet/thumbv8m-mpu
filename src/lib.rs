@@ -98,7 +98,7 @@ impl MemoryAttributes {
         Self::Device(DeviceMemoryAttributes::None)
     }
 
-    /// Memory attributes describing normal, fully non-cacheable memory memory.
+    /// Memory attributes describing normal, fully non-cacheable memory.
     pub const fn normal_non_cacheable() -> Self {
         Self::Normal {
             outer: NormalMemoryAttributes::NonCacheable,
